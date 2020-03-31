@@ -25,9 +25,6 @@ if not env_vars_loaded:
         print('environmental variables file not found')
         pass
 
-    os.environ["POSTGRES_HOST"] = 'localhost'
-    os.environ["POSTGRES_PORT"] = os.environ.get('LOCAL_POSTGRES_PORT', '5432')
-
 # Add all project configurations that are stored in env variables:
 
 # config

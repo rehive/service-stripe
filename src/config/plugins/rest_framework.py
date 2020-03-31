@@ -11,7 +11,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'service_payment_processor_stripe.permissions.IsAuthenticated',
+        'service_stripe.permissions.IsAuthenticated',
     ),
     'EXCEPTION_HANDLER': 'config.exceptions.custom_exception_handler',
 }

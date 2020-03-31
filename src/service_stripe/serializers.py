@@ -8,9 +8,7 @@ from rest_framework import serializers
 from drf_rehive_extras.serializers import BaseModelSerializer
 from drf_rehive_extras.fields import TimestampField
 
-from service_stripe.models import (
-    Company, User, Subscription, Plan
-)
+from service_stripe.models import Company, User
 from service_stripe.enums import SubscriptionStatus
 
 from logging import getLogger
