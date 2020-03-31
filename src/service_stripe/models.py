@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.db import models
 from django_rehive_extras.models import DateModel
 
-from service_payment_processor_stripe.enums import SubscriptionStatus
+from service_stripe.enums import SubscriptionStatus
 
 
 logger = getLogger('django')
@@ -25,7 +25,7 @@ class Company(DateModel):
 class User(DateModel):
     identifier = models.UUIDField(unique=True, db_index=True)
     company = models.ForeignKey(
-        'service_payment_processor_stripe.Company', on_delete=models.CASCADE
+        'service_stripe.Company', on_delete=models.CASCADE
     )
 
     def __str__(self):

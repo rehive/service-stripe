@@ -9,10 +9,10 @@ from rest_framework import exceptions
 from rest_framework.response import Response
 from drf_rehive_extras.generics import *
 
-from service_payment_processor_stripe.authentication import *
-from service_payment_processor_stripe.serializers import *
-from service_payment_processor_stripe.models import *
-from service_payment_processor_stripe.enums import SubscriptionStatus
+from service_stripe.authentication import *
+from service_stripe.serializers import *
+from service_stripe.models import *
+from service_stripe.enums import SubscriptionStatus
 from rest_framework.parsers import BaseParser, ParseError
 from rest_framework.renderers import JSONRenderer
 from django.conf import settings

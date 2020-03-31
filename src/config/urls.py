@@ -33,5 +33,5 @@ urlpatterns = [
     re_path(r'^$', schema_view.with_ui('redoc', cache_timeout=None), name='schema-redoc'),
 
     # API
-    re_path(r'^api/', include(('service_payment_processor_stripe.urls', 'service_payment_processor_stripe'), namespace='service_payment_processor_stripe')),
+    re_path(r'^api/', include(('service_stripe.urls', 'service_stripe'), namespace='service_stripe')),
 ]

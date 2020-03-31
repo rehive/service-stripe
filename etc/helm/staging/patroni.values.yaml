@@ -10,9 +10,9 @@ cleanup:
     tag: v1.13.7
 cloneWithWale:
   enabled: false
-  cloneScope: patroni-service-payment-processor-stripe-patroni
+  cloneScope: patroni-service-stripe-patroni
   cloneTargetTime: ""
-  cloneWalGcsBucket: service-payment-processor-stripe-staging-pgbackup
+  cloneWalGcsBucket: service-stripe-staging-pgbackup
   cloneWaleEnvDir: /home/postgres/etc/wal-e-clone.d/env
   gcloudCredentials: gcloud-wale.json
 debug: true
@@ -27,7 +27,7 @@ persistentVolume:
   - ReadWriteOnce
   annotations:
     app: spilo
-    release: patroni-service-payment-processor-stripe
+    release: patroni-service-stripe
   enabled: true
   size: 50Gi
   storageClass: patroni-standard
@@ -60,7 +60,7 @@ walE:
   enabled: true
   envDir: /home/postgres/etc/wal-e.d/env
   gcloudCredentials: gcloud-wale.json
-  gcsBucket: service-payment-processor-stripe-staging-pgbackup
+  gcsBucket: service-stripe-staging-pgbackup
   retainBackups: 2
   s3Bucket: null
   scheduleCronJob: 00 01 * * *

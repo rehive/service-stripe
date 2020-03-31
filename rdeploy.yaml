@@ -1,20 +1,20 @@
 version: '1'
 configs:
   staging:
-    project_name: service-payment-processor-stripe
-    docker_image: gcr.io/rehive-services/service_payment_processor_stripe
+    project_name: service-stripe
+    docker_image: gcr.io/rehive-services/service-stripe
     cloud_project: rehive-services
     cluster: staging
-    namespace: service-payment-processor-stripe-staging
+    namespace: service-stripe-staging
     helm_values_path: ./etc/helm/staging/values.yaml
     helm_chart: rehive/rehive-service
     helm_chart_version: 0.1.38
   production:
-    project_name: service-payment-processor-stripe
-    docker_image: gcr.io/rehive-services/service-payment-processor-stripe
+    project_name: service-stripe
+    docker_image: gcr.io/rehive-services/service-stripe
     cloud_project: rehive-services
     cluster: production
-    namespace: service-payment-processor-stripe
+    namespace: service-stripe
     helm_values_path: ./etc/helm/production/values.yaml
     helm_chart: rehive/rehive-service
     helm_chart_version: 0.1.38

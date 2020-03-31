@@ -54,7 +54,7 @@ INSTALLED_APPS = [
     'drf_rehive_extras',
     'django_rehive_extras',
 
-    'service_payment_processor_stripe',
+    'service_stripe',
 ]
 
 # Middleware

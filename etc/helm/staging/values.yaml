@@ -7,7 +7,7 @@ deployment:
       memory: 512Mi
 image:
   pullPolicy: IfNotPresent
-  repository: gcr.io/rehive-services/service-payment-processor-stripe
+  repository: gcr.io/rehive-services/service-stripe
   tag: 0.0.0-rc.1
 ingress:
   annotations:
@@ -19,14 +19,14 @@ ingress:
   tls:
   - hosts:
     - billing.s.services.rehive.io
-    secretName: service-payment-processor-stripe-staging-tls
+    secretName: service-stripe-staging-tls
 postgres:
   enabled: true
-  host: patroni-service-payment-processor-stripe-patroni.service-payment-processor-stripe-staging.svc.cluster.local
+  host: patroni-service-stripe-patroni.service-stripe-staging.svc.cluster.local
   port: "5432"
   secret:
     key: password-admin
-    name: patroni-service-payment-processor-stripe-patroni
+    name: patroni-service-stripe-patroni
   user: webapp
 service:
   externalPort: 80
