@@ -1,0 +1,57 @@
+deployment:
+  command: '[''gunicorn'', ''config.wsgi:application'', ''--config'', ''file:config/gunicorn.py'']'
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+image:
+  pullPolicy: IfNotPresent
+  repository: gcr.io/rehive-services/service-payment-processor-stripe
+  tag: 0.0.0-rc.1
+ingress:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+  enabled: true
+  hosts:
+  - billing.services.rehive.io
+  tls:
+  - hosts:
+    - billing.services.rehive.io
+    secretName: service-payment-processor-stripe-tls
+management:
+  enabled: false
+postgres:
+  enabled: true
+  host: patroni-service-payment-processor-stripe-patroni.service-payment-processor-stripe.svc.cluster.local
+  port: "5432"
+  secret:
+    key: password-admin
+    name: patroni-service-payment-processor-stripe-patroni
+  user: webapp
+service:
+  externalPort: 80
+  internalPort: 8000
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+  name: nginx
+  readinessProbe:
+    httpGet:
+      path: /readiness
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+  type: NodePort
+rabbitmq:
+  enabled: false
+redis:
+  enabled: false
+workers:
+  enabled: false

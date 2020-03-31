@@ -1,0 +1,66 @@
+bootstrapParameters:
+  dcs:
+    loop_wait: 30
+    retry_timeout: 10
+    ttl: 70
+cleanup:
+  image:
+    pullPolicy: IfNotPresent
+    repository: gcr.io/google-containers/hyperkube
+    tag: v1.13.7
+cloneWithWale:
+  enabled: false
+  cloneScope: patroni-service-payment-processor-stripe-patroni
+  cloneTargetTime: ""
+  cloneWalGcsBucket: service-payment-processor-stripe-staging-pgbackup
+  cloneWaleEnvDir: /home/postgres/etc/wal-e-clone.d/env
+  gcloudCredentials: gcloud-wale.json
+debug: true
+image:
+  pullPolicy: IfNotPresent
+  repository: eu.gcr.io/rehive-services/spilo-11
+  tag: 1.6.1
+nodeSelector:
+  cloud.google.com/gke-nodepool: postgres-pool
+persistentVolume:
+  accessModes:
+  - ReadWriteOnce
+  annotations:
+    app: spilo
+    release: patroni-service-payment-processor-stripe
+  enabled: true
+  size: 50Gi
+  storageClass: patroni-standard
+podAntiAffinity: soft
+postgresParameters:
+  bin_dir: /usr/lib/postgresql/9.6/bin
+  parameters:
+    log_destination: stderr,csvlog
+  pg_hba:
+  - host all all 0.0.0.0/0 md5
+  - host replication replicator 127.0.0.1/32 md5
+rbac:
+  create: true
+replicas: 1
+resources: null
+serviceAccount:
+  create: true
+tolerations:
+- effect: NoSchedule
+  key: dedicated
+  operator: Equal
+  value: postgres
+useConfigMaps: false
+gcloudCredentials:
+  enabled: true
+  secretName: gcloud-wale
+walE:
+  backupThresholdMegabytes: 1024
+  backupThresholdPercentage: 30
+  enabled: true
+  envDir: /home/postgres/etc/wal-e.d/env
+  gcloudCredentials: gcloud-wale.json
+  gcsBucket: service-payment-processor-stripe-staging-pgbackup
+  retainBackups: 2
+  s3Bucket: null
+  scheduleCronJob: 00 01 * * *
