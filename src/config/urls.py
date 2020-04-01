@@ -11,7 +11,7 @@ admin.autodiscover()
 
 schema_view = get_schema_view(
    openapi.Info(
-      title="Billing Service API",
+      title="Stripe Service API",
       default_version='v1',
       description="Start by clicking Authorize and adding the header: "
        "Token <your-api-key>. The user endpoints require a normal "

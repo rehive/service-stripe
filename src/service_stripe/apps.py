@@ -1,5 +1,5 @@
 from django.apps import AppConfig
 
 
-class ServiceBilling(AppConfig):
+class ServiceStripe(AppConfig):
     name = 'service_stripe'

@@ -41,9 +41,9 @@ class AdminAuthentication(HeaderAuthentication):
         rehive = Rehive(token)
 
         try:
-            user_data = rehive.auth.tokens.verify(token)
-            groups = [g['name'] for g in user_data['groups']]
-            if len(set(["admin",]).intersection(groups)) <= 0:
+            user = rehive.auth.tokens.verify(token)
+            groups = [g['name'] for g in user['groups']]
+            if len(set(["admin", "service"]).intersection(groups)) <= 0:
                 raise exceptions.AuthenticationFailed(_('Invalid admin user'))
         except APIException as exc:
             if (hasattr(exc, 'data')):
@@ -53,22 +53,22 @@ class AdminAuthentication(HeaderAuthentication):
 
             raise exceptions.AuthenticationFailed(message)
 
-        # NB : This is different from the normal authentication in services.
-        # This service does not have to be activated before using it.
-        # As such the company is simply created if posisble.
-        company, created = Company.objects.get_or_create(
-            identifier=user_data['company']
-        )
+        try:
+            company = Company.objects.get(
+                identifier=user['company'],
+                active=True
+            )
+        except Company.DoesNotExist:
+            raise exceptions.AuthenticationFailed(
+                _("Inactive company. Please activate the company first."))
 
         user, created = User.objects.get_or_create(
-            identifier=uuid.UUID(user_data['id']),
+            identifier=uuid.UUID(user['id']),
             company=company
         )
-        # Add temporary extra information to the user data.
-        user._email_verified = user_data["verification"]["email"]
-        user._email = user_data["email"]
 
-        return user, token
+        # Return the permanent token for (not the request token) the company.
+        return user, company.admin.token
 
 
 class UserAuthentication(HeaderAuthentication):
@@ -92,19 +92,17 @@ class UserAuthentication(HeaderAuthentication):
 
             raise exceptions.AuthenticationFailed(message)
 
-        # NB : This is different from the normal authentication in services.
-        # This service does not have to be activated before using it.
-        # As such the company is simply created if posisble.
-        company, created = Company.objects.get_or_create(
-            identifier=user['company']
-        )
+        try:
+            company = Company.objects.get(
+                identifier=user['company'],
+                active=True
+            )
+        except Company.DoesNotExist:
+            raise exceptions.AuthenticationFailed(_("Inactive company."))
 
         user, created = User.objects.get_or_create(
             identifier=uuid.UUID(user['id']),
             company=company
         )
-        # Add temporary extra information to the user data.
-        user._email_verified = user_data["verification"]["email"]
-        user._email = user_data["email"]
 
         return user, token
