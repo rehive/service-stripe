@@ -3,6 +3,13 @@ from rest_framework.urlpatterns import format_suffix_patterns
 
 from . import views
 
+"""
+    1. Create a Checkout setup mode Session on your server
+    2. Add Checkout to your website
+    3. Retrieve the Session object on your server
+    4. Retrieve the SetupIntent object on your server
+    5. Use the PaymentMethod object on your server
+"""
 
 urlpatterns = (
     # Public
@@ -12,12 +19,8 @@ urlpatterns = (
     # User
     re_path(r'^user/company/$', views.UserCompanyView.as_view(), name='user-company-view'),
 
-
     # Admin
     re_path(r'^admin/company/$', views.AdminCompanyView.as_view(), name='admin-company-view'),
-
-	# User
-	# re_path(r'^user/public-key/$', views.UserPublicKeyView.as_view(), name='user-public-key-view'),
 
     # Admin
     # re_path(r'^admin/checkout-session/$', views.AdminCreateCheckoutSessionView.as_view(), name='admin-create-checkout-session-view'),
