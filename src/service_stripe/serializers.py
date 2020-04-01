@@ -187,6 +187,15 @@ class AdminCompanySerializer(BaseModelSerializer):
         fields = ('id', 'stripe_api_key', 'stripe_publishable_api_key',)
 
 
+# User
+
+class CompanySerializer(BaseModelSerializer):
+    id = serializers.CharField(source='identifier', read_only=True)
+
+    class Meta:
+        model = Company
+        fields = ('id', 'stripe_publishable_api_key',)
+
 # class AdminCreateCheckoutSessionSerializer(serializers.Serializer):
 #     # Each list item must contain: '{"plan": ""}'
 #     items = serializers.ListField(

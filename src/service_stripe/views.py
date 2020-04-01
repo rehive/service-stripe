@@ -66,15 +66,12 @@ User Endpoints
 """
 
 
-# class UserPublicKeyView(APIView):
-#     """
-#     Get the public stripe key that can be used on the frontend.
-#     """
+class UserCompanyView(RetrieveAPIView):
+    serializer_class = CompanySerializer
+    authentication_classes = (UserAuthentication,)
 
-#     authentication_classes = (AdminAuthentication,)
-
-#     def get(self, request):
-#         return Response({"key": os.environ.get('STRIPE_PUBLISHABLE_KEY')})
+    def get_object(self):
+        return self.request.user.company
 
 
 """
