@@ -4,21 +4,15 @@ from logging import getLogger
 from datetime import datetime, date
 
 import stripe
-from rest_framework.views import APIView
 from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from django.conf import settings
 from drf_rehive_extras.generics import *
 
 from service_stripe.authentication import *
 from service_stripe.serializers import *
 from service_stripe.models import *
-from service_stripe.enums import SubscriptionStatus
-from rest_framework.parsers import BaseParser, ParseError
-from rest_framework.renderers import JSONRenderer
-from django.conf import settings
-import json
-import six
 
 
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
@@ -74,9 +68,31 @@ class UserCompanyView(RetrieveAPIView):
         return self.request.user.company
 
 
-"""
-Admin Endpoints
-"""
+class UserListCreateSessionView(ListCreateAPIView):
+    serializer_class = SessionSerializer
+    authentication_classes = (UserAuthentication,)
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Session.objects.none()
+
+        return Session.objects.filter(
+            user=self.request.user
+        ).order_by('-created')
+
+
+class UserSessionView(RetrieveAPIView):
+    serializer_class = SessionSerializer
+    authentication_classes = (UserAuthentication,)
+
+    def get_object(self):
+        try:
+            return Session.objects.get(
+                identifier=self.kwargs.get('identifier'),
+                user=self.request.user
+            )
+        except Session.DoesNotExist:
+            raise exceptions.NotFound()
 
 
 # class AdminCreateCheckoutSessionView(CreateAPIView):

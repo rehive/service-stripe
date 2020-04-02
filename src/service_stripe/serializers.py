@@ -6,25 +6,42 @@ from datetime import datetime, date
 
 from rehive import Rehive, APIException
 from rest_framework import serializers
-from django.db import transaction, DatabaseError, IntegrityError
+from django.db import transaction
 from drf_rehive_extras.serializers import BaseModelSerializer
 from drf_rehive_extras.fields import TimestampField
 
-from service_stripe.models import Company, User, Currency
-from service_stripe.enums import SubscriptionStatus
+from service_stripe.models import Company, User, Currency, Session
+from service_stripe.enums import SessionMode
 
 from logging import getLogger
 
 
-stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
-stripe.api_version = os.environ.get('STRIPE_API_VERSION')
-
 logger = getLogger('django')
+
+
+class EnumField(serializers.ChoiceField):
+    def __init__(self, enum, **kwargs):
+        self.enum = enum
+        kwargs['choices'] = [(e.value, e.label) for e in enum]
+        super().__init__(**kwargs)
+
+    def to_representation(self, obj):
+        try:
+            return obj.value
+        except AttributeError:
+            return obj
+
+    def to_internal_value(self, data):
+        try:
+            return self.enum(data)
+        except ValueError:
+            self.fail('invalid_choice', input=data)
 
 
 class ActivateSerializer(serializers.Serializer):
     token = serializers.CharField(write_only=True)
     id = serializers.CharField(source='identifier', read_only=True)
+    secret = serializers.UUIDField(read_only=True)
     stripe_api_key = serializers.CharField(read_only=True)
     stripe_publishable_api_key = serializers.CharField(read_only=True)
 
@@ -184,7 +201,10 @@ class AdminCompanySerializer(BaseModelSerializer):
 
     class Meta:
         model = Company
-        fields = ('id', 'stripe_api_key', 'stripe_publishable_api_key',)
+        fields = (
+            'id', 'secret', 'stripe_api_key', 'stripe_publishable_api_key',
+        )
+        read_only_fields = ('id', 'secret',)
 
 
 # User
@@ -195,6 +215,74 @@ class CompanySerializer(BaseModelSerializer):
     class Meta:
         model = Company
         fields = ('id', 'stripe_publishable_api_key',)
+
+
+class SessionSerializer(BaseModelSerializer):
+    id = serializers.CharField(source='identifier', read_only=True)
+    mode = EnumField(enum=SessionMode)
+
+    class Meta:
+        model = Session
+        fields = ('id', 'mode',)
+        read_only_fields = ('id',)
+
+    def validate_mode(self, mode):
+        user = self.context['request'].user
+
+        # A setup session must be completed before any other modes an be used.
+        if (not user.stripe_customer_id
+                and mode != SessionMode.SETUP):
+            raise serializers.ValidationError(
+                "A setup session needs to be completed before a payment."
+            )
+
+        return mode
+
+    def validate(self, validated_data):
+        user = self.context['request'].user
+
+        # Ensure the company is configured for Stripe usage.
+        if (not user.company.stripe_api_key
+                or not user.company.stripe_success_url
+                or not user.company.stripe_cancel_url):
+            raise serializers.ValidationError(
+                {'non_field_errors': ["The company is not fully configured."]}
+            )
+
+        return validated_data
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        company = user.company
+        mode = validated_data.get("mode")
+
+        data = {
+            "payment_method_types": ['card'],
+            "mode": mode,
+            "success_url": company.stripe_success_url \
+                + "?session_id={CHECKOUT_SESSION_ID}&succeeded=true",
+            "cancel_url": company.stripe_cancel_url \
+                + "?session_id: {CHECKOUT_SESSION_ID}&succeeded=false"
+        }
+
+        # Add customer data if any already exists.
+        if user.stripe_customer_id:
+            data["customer"] = user.stripe_customer_id
+
+        # Initiate stripe variables.
+        stripe.api_key = user.company.stripe_api_key
+        stripe.api_version = os.environ.get('STRIPE_API_VERSION')
+
+        # Call the Stripe SDK to create a session.
+        session = stripe.checkout.Session.create(**data)
+
+        # Return the session details.
+        return Session.objects.create(
+            identifier=session["id"],
+            user=user,
+            mode=SessionMode.SETUP
+        )
+
 
 # class AdminCreateCheckoutSessionSerializer(serializers.Serializer):
 #     # Each list item must contain: '{"plan": ""}'

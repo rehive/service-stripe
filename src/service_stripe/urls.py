@@ -18,9 +18,14 @@ urlpatterns = (
 
     # User
     re_path(r'^user/company/$', views.UserCompanyView.as_view(), name='user-company-view'),
+    re_path(r'^user/sessions/$', views.UserListCreateSessionView.as_view(), name='user-sessions-list'),
+    re_path(r'^user/sessions/(?P<identifier>\w+)/?$', views.UserSessionView.as_view(), name='user-sessions-view'),
+    # re_path(r'^user/payments/$', views.UserCreatePaymentView.as_view(), name='user-create-payment-view'),
 
     # Admin
     re_path(r'^admin/company/$', views.AdminCompanyView.as_view(), name='admin-company-view'),
+
+    # re_path(r'^admin/webhook/$', views.AdminWebhookView.as_view(), name='admin-webhook-view'),
 
     # Admin
     # re_path(r'^admin/checkout-session/$', views.AdminCreateCheckoutSessionView.as_view(), name='admin-create-checkout-session-view'),

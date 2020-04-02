@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.db import models
 from django_rehive_extras.models import DateModel
 
-from service_stripe.enums import SubscriptionStatus
+from service_stripe.enums import SessionMode
 
 
 logger = getLogger('django')
@@ -19,8 +19,11 @@ class Company(DateModel):
         related_name='admin_company',
         on_delete=models.CASCADE
     )
+    secret = models.UUIDField()
     stripe_api_key = models.CharField(max_length=100)
     stripe_publishable_api_key = models.CharField(max_length=100)
+    stripe_success_url = models.CharField(max_length=150)
+    stripe_cancel_url = models.CharField(max_length=150)
     active = models.BooleanField(default=True, blank=False, null=False)
 
     def __str__(self):
@@ -29,12 +32,21 @@ class Company(DateModel):
     def natural_key(self):
         return (self.identifier,)
 
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.secret = uuid.uuid4()
+
+        return super().save(*args, **kwargs)
+
 
 class User(DateModel):
     identifier = models.UUIDField(unique=True, db_index=True)
     token = models.CharField(max_length=200, null=True)
     company = models.ForeignKey(
         'service_stripe.Company', null=True, on_delete=models.CASCADE
+    )
+    stripe_customer_id = models.CharField(
+        unique=True, db_index=True, max_length=64, null=True
     )
 
     def __str__(self):
@@ -58,3 +70,12 @@ class Currency(DateModel):
 
     def __str__(self):
         return str(self.code)
+
+
+class Session(DateModel):
+    identifier = models.CharField(max_length=64, unique=True, db_index=True)
+    user = models.ForeignKey('service_stripe.User', on_delete=models.CASCADE)
+    mode = EnumField(SessionMode, max_length=20, db_index=True)
+
+    def __str__(self):
+        return str(self.identifier)
