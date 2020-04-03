@@ -4,17 +4,40 @@ from rest_framework.urlpatterns import format_suffix_patterns
 from . import views
 
 """
-    1. Create a Checkout setup mode Session on your server
-    2. Add Checkout to your website
-    3. Retrieve the Session object on your server
-    4. Retrieve the SetupIntent object on your server
-    5. Use the PaymentMethod object on your server
+    1. CLIENT -> POST /user/sessions/ with a mode of `setup`
+        - SERVER creates a session on Stripe
+    2. CLIENT -> Use the session_id returned as the redirectToCheckout sessionId
+        - CLIENT gets redirected to Stripe setup
+    3. SERVER -> Wait for webhooks to indicate the above step was completed
+        - SERVER receives webhooks and stores the updated session details
+            - checkout.session.completed
+            - checkout.session.cancelled?
+            - store the `setup_intent`
+    4. SERVER -> Store the setup intent object
+        - SERVER retrieves a setup intent object
+        - Store the payment method
+    5. CLIENT -> POST /user/payments/
+        SERVER uses the setup intent to create a payment intent (using the payment method)
+            -  user confirm=True
+
+    --- START : for 3Dsecure ---
+
+    6. CLIENT -> checks payment status
+        -  CLIENT if 3Dsecure is required then redirect again to 3Dsecure facility.
+
+    --- END : for 3Dsecure  ---
+
+    5./7. SERVER -> Wait for webhooks to indicate complete payment
+        - SERVER updates payment on service accordingly
+    6/8. CLIENT -> pings server for updated status
+        - CLIENT displays success/failed/cancel message
 """
 
 urlpatterns = (
     # Public
     re_path(r'^activate/$', views.ActivateView.as_view(), name='activate'),
     re_path(r'^deactivate/$', views.DeactivateView.as_view(), name='deactivate'),
+    re_path(r'^webhook/(?P<company_id>\w+)/$', views.WebhookView.as_view(), name='webhook'),
 
     # User
     re_path(r'^user/company/$', views.UserCompanyView.as_view(), name='user-company-view'),
@@ -24,8 +47,6 @@ urlpatterns = (
 
     # Admin
     re_path(r'^admin/company/$', views.AdminCompanyView.as_view(), name='admin-company-view'),
-
-    # re_path(r'^admin/webhook/$', views.AdminWebhookView.as_view(), name='admin-webhook-view'),
 
     # Admin
     # re_path(r'^admin/checkout-session/$', views.AdminCreateCheckoutSessionView.as_view(), name='admin-create-checkout-session-view'),
