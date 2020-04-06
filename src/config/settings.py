@@ -14,10 +14,12 @@ from django.utils.translation import ugettext_lazy as _
 import os
 
 from .plugins.secrets import *
+
 from .plugins.rest_framework import *
 from .plugins.yasg import *
 from .plugins.database import *
 from .plugins.sentry import *
+from .plugins.urls import *
 from .plugins.healthz import *
 
 

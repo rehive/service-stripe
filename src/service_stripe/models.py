@@ -24,12 +24,12 @@ class Company(DateModel):
         related_name='admin_company',
         on_delete=models.CASCADE
     )
-    secret = models.UUIDField()
-    stripe_api_key = models.CharField(max_length=100)
-    stripe_publishable_api_key = models.CharField(max_length=100)
-    stripe_success_url = models.CharField(max_length=150)
-    stripe_cancel_url = models.CharField(max_length=150)
-    active = models.BooleanField(default=True, blank=False, null=False)
+    stripe_api_key = models.CharField(max_length=100, null=True)
+    stripe_secret = models.CharField(max_length=150, null=True)
+    stripe_publishable_api_key = models.CharField(max_length=100, null=True)
+    stripe_success_url = models.CharField(max_length=150, null=True)
+    stripe_cancel_url = models.CharField(max_length=150, null=True)
+    active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.identifier
@@ -37,11 +37,17 @@ class Company(DateModel):
     def natural_key(self):
         return (self.identifier,)
 
-    def save(self, *args, **kwargs):
-        if not self.id:
-            self.secret = uuid.uuid4()
+    @property
+    def configured(self):
+        if (self.stripe_api_key
+                and self.stripe_secret
+                and self.stripe_publishable_api_key
+                and self.stripe_success_url
+                and self.stripe_cancel_url
+                and self.active):
+            return True
 
-        return super().save(*args, **kwargs)
+        return False
 
 
 class User(DateModel):
@@ -57,6 +63,14 @@ class User(DateModel):
 
     def __str__(self):
         return str(self.identifier)
+
+    @property
+    def configured(self):
+        if (self.stripe_cutsomer_id
+                and self.stripe_payment_method_id):
+            return True
+
+        return False
 
 
 class Currency(DateModel):

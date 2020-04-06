@@ -45,9 +45,10 @@ class EnumField(serializers.ChoiceField):
 class ActivateSerializer(serializers.Serializer):
     token = serializers.CharField(write_only=True)
     id = serializers.CharField(source='identifier', read_only=True)
-    secret = serializers.UUIDField(read_only=True)
     stripe_api_key = serializers.CharField(read_only=True)
     stripe_publishable_api_key = serializers.CharField(read_only=True)
+    stripe_success_url = serializers.CharField(read_only=True)
+    stripe_cancel_url = serializers.CharField(read_only=True)
 
     def validate(self, validated_data):
         token = validated_data.get('token')
@@ -213,7 +214,7 @@ class WebhookSerializer(serializers.Serializer):
                 {"non_field_errors": ["Invalid company."]}
             )
 
-        if not company.stripe_api_key or not company.stripe_webhook_secret:
+        if not company.configured:
             raise serializers.ValidationError(
                 {'non_field_errors': ["The company is improperly configured."]}
             )
@@ -225,7 +226,7 @@ class WebhookSerializer(serializers.Serializer):
             event = stripe.Webhook.construct_event(
                 payload=self.context['request'].raw_body,
                 sig_header=sig_header,
-                secret=company.stripe_webhook_secret,
+                secret=company.stripe_secret,
                 api_key=company.stripe_api_key
             )
         except ValueError as e:
@@ -309,9 +310,53 @@ class AdminCompanySerializer(BaseModelSerializer):
     class Meta:
         model = Company
         fields = (
-            'id', 'secret', 'stripe_api_key', 'stripe_publishable_api_key',
+            'id',
+            'stripe_api_key',
+            'stripe_publishable_api_key',
+            'stripe_success_url',
+            'stripe_cancel_url',
         )
-        read_only_fields = ('id', 'secret',)
+        read_only_fields = ('id',)
+
+    def validate(self, validated_data):
+        user = self.context['request'].user
+
+        # Try and create webhooks if the stripe API key is updated.
+        if validated_data.get("stripe_api_key"):
+            # Required webhook URL.
+            webhook_url = "{}{}/{}/".format(
+                getattr(settings, 'BASE_URL'),
+                'webhook',
+                user.company.identifier
+            )
+            # New stripe API key to test (and add webhooks).
+            stripe_api_key = validated_data["stripe_api_key"]
+
+            try:
+                webhooks = stripe.WebhookEndpoint.list(
+                    limit=100, api_key=stripe_api_key
+                )["data"]
+            except stripe.error.StripeError:
+                raise serializers.ValidationError(
+                    {'stripe_api_key': ["Invalid API key or permissions."]}
+                )
+
+            # If no webhook exists matching the webhook requirement, create one.
+            matched_webhooks = [w for w in webhooks if w.url == webhook_url]
+            if matched_webhooks < 1:
+                webhook = stripe.WebhookEndpoint.create(
+                    url=webhook_url,
+                    enabled_events=[
+                        "checkout.session.completed",
+                        "payment_intent.succeeded",
+                        "payment_intent.payment_failed"
+                    ],
+                    api_key=stripe_api_key
+                )
+                # Add the new stripe secret to the validated_data.
+                validated_data["stripe_secret"] = webhook["secret"]
+
+        return validated_data
 
 # User
 
@@ -353,10 +398,7 @@ class SessionSerializer(BaseModelSerializer):
     def validate(self, validated_data):
         user = self.context['request'].user
 
-        # Ensure the company is configured for Stripe usage.
-        if (not user.company.stripe_api_key
-                or not user.company.stripe_success_url
-                or not user.company.stripe_cancel_url):
+        if not user.company.configured:
             raise serializers.ValidationError(
                 {'non_field_errors': ["The company is improperly configured."]}
             )
@@ -422,7 +464,12 @@ class PaymentSerializer(BaseModelSerializer):
         currency = validated_data.get("currency")
         amount = validated_data.get("amount")
 
-        if not user.stripe_cutsomer_id or not user.stripe_payment_method_id:
+        if not user.company.configured:
+            raise serializers.ValidationError(
+                {'non_field_errors': ["The company is improperly configured."]}
+            )
+
+        if user.configured:
             raise serializers.ValidationError(
                 {'non_field_errors': [
                     "A setup session needs to be completed before a payment."
@@ -453,24 +500,15 @@ class PaymentSerializer(BaseModelSerializer):
         user = self.context['request'].user
         cent_amount = validated_data.pop("cent_amount")
 
-        # Initiate stripe variables.
-        stripe.api_key = user.company.stripe_api_key
-        stripe.api_version = os.environ.get('STRIPE_API_VERSION')
-
-        try:
-            intent = stripe.PaymentIntent.create(
-                amount=cent_amount,
-                currency=validated_data["currency"].code.lower(),
-                confirm=True,
-                off_session=True,
-                customer=user.stripe_customer_id,
-                payment_method=user.stripe_payment_method_id
-            )
-        except Exception as e:
-            # TODO : Add better error handing.
-            raise serializers.ValidationError(
-                {"non_field_errors": ["Error connecting to Stripe."]}
-            )
+        intent = stripe.PaymentIntent.create(
+            amount=cent_amount,
+            currency=validated_data["currency"].code.lower(),
+            confirm=True,
+            off_session=True,
+            customer=user.stripe_customer_id,
+            payment_method=user.stripe_payment_method_id,
+            api_key=user.company.stripe_api_key
+        )
 
         return Payment.objects.create(
             identifier=intent["id"], **validated_data
