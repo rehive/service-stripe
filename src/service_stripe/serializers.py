@@ -1,20 +1,24 @@
 import os
 import decimal
-import stripe
 import uuid
 from datetime import datetime, date
+from decimal import Decimal
 
+import stripe
 from rehive import Rehive, APIException
 from rest_framework import serializers
 from django.db import transaction
 from drf_rehive_extras.serializers import BaseModelSerializer
 from drf_rehive_extras.fields import TimestampField
 
-from service_stripe.models import Company, User, Currency, Session
-from service_stripe.enums import SessionMode
+from service_stripe.models import Company, User, Currency, Session, Payment
+from service_stripe.enums import SessionMode, PaymentStatus
+from service_stripe.utils.common import to_cents, from_cents
 
 from logging import getLogger
 
+
+stripe.api_version = os.environ.get('STRIPE_API_VERSION')
 
 logger = getLogger('django')
 
@@ -209,9 +213,11 @@ class WebhookSerializer(serializers.Serializer):
                 {"non_field_errors": ["Invalid company."]}
             )
 
-        # Initiate stripe variables.
-        stripe.api_key = user.company.stripe_api_key
-        stripe.api_version = os.environ.get('STRIPE_API_VERSION')
+        if not company.stripe_api_key or not company.stripe_webhook_secret:
+            raise serializers.ValidationError(
+                {'non_field_errors': ["The company is improperly configured."]}
+            )
+
         # Get the signature from the request header.
         sig_header = self.context['request'].META['HTTP_STRIPE_SIGNATURE']
 
@@ -219,7 +225,8 @@ class WebhookSerializer(serializers.Serializer):
             event = stripe.Webhook.construct_event(
                 payload=self.context['request'].raw_body,
                 sig_header=sig_header,
-                secret=company.stripe_webhook_secret
+                secret=company.stripe_webhook_secret,
+                api_key=company.stripe_api_key
             )
         except ValueError as e:
             raise serializers.ValidationError(
@@ -233,25 +240,64 @@ class WebhookSerializer(serializers.Serializer):
         return validated_data
 
     def create(self, validated_data):
-        # Handle: checkout.session.completed
+        # Handle: checkout.session.completed.
+        # When a setup session had been completed.
         if validated_data['type'] == 'checkout.session.completed':
-            session = validated_data['data']['object']
+            stripe_session = validated_data['data']['object']
+            try:
+                # The session must have been initiated via this service.
+                session = Session.objects.get(identifier=stripe_session["id"])
+            except Session.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"non_field_errors": ["Invalid session."]}
+                )
 
-            if session['setup_intent']:
-                # Retrieve the setup intent
-                setup_intent = stripe.SetupIntent.retrieve(
-                    session['setup_intent']
+            if stripe_session['setup_intent']:
+                # Retrieve the setup intent (From Stripe).
+                intent = stripe.SetupIntent.retrieve(
+                    session['setup_intent'],
+                    api_key=session.user.company.stripe_api_key
                 )
-                # Attach the payment method to the customer
+                # Attach the payment method to the customer (In Stripe).
                 stripe.PaymentMethod.attach(
-                    setup_intent['payment_method'],
-                    customer=setup_intent['metadata']['customer_id'],
+                    intent['payment_method'],
+                    customer=intent['metadata']['customer_id'],
+                    api_key=session.user.company.stripe_api_key
                 )
-                # Set subsrciption to use the payment method by default
-                stripe.Subscription.modify(
-                    setup_intent['metadata']['subscription_id'],
-                    default_payment_method=setup_intent['payment_method']
+                # Attach the payment method to the user (In Rehive).
+                user.stripe_payment_method_id = intent['payment_method']
+                # Attach the customer id to the user (In Rehive).
+                user.stripe_customer_id = intent['metadata']['customer_id']
+                user.save()
+
+        # Handle payment_intent.succeeded.
+        # When a payment succeeds in Stripe.
+        elif validated_data['type'] == 'payment_intent.succeeded':
+            intent = validated_data['data']['object']
+            try:
+                payment = Payment.objects.get(identifier=intent["id"])
+            except Payment.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"non_field_errors": ["Invalid payment."]}
                 )
+
+            payment.transition(PaymentStatus.SUCCEEDED)
+
+        # Handle payment_intent.payment_failed.
+        # When a payment fails in Stripe.
+        elif validated_data['type'] == 'payment_intent.payment_failed':
+            intent = validated_data['data']['object']
+            try:
+                payment = Payment.objects.get(identifier=intent["id"])
+            except Payment.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"non_field_errors": ["Invalid payment."]}
+                )
+
+            error_message = intent['last_payment_error']['message'] \
+                if intent.get('last_payment_error') else None
+
+            payment.transition(PaymentStatus.FAILED, error=error_message)
 
         return validated_data
 
@@ -289,12 +335,18 @@ class SessionSerializer(BaseModelSerializer):
     def validate_mode(self, mode):
         user = self.context['request'].user
 
-        # A setup session must be completed before any other modes an be used.
-        if (not user.stripe_customer_id
-                and mode != SessionMode.SETUP):
+        if mode != SessionMode.SETUP:
             raise serializers.ValidationError(
-                "A setup session needs to be completed before a payment."
+                "Only setup sessions are suppported"
             )
+
+        # NOTE : Removed because we do not support the `payment` mode yet.
+        # A setup session must be completed before any other modes an be used.
+        # if (not user.stripe_customer_id
+        #         and mode != SessionMode.SETUP):
+        #     raise serializers.ValidationError(
+        #         "A setup session needs to be completed before a payment."
+        #     )
 
         return mode
 
@@ -329,16 +381,97 @@ class SessionSerializer(BaseModelSerializer):
         if user.stripe_customer_id:
             data["customer"] = user.stripe_customer_id
 
-        # Initiate stripe variables.
-        stripe.api_key = user.company.stripe_api_key
-        stripe.api_version = os.environ.get('STRIPE_API_VERSION')
-
         # Call the Stripe SDK to create a session.
-        session = stripe.checkout.Session.create(**data)
+        session = stripe.checkout.Session.create(
+            api_key=user.company.stripe_api_key, **data,
+        )
 
         # Return the session details.
         return Session.objects.create(
             identifier=session["id"],
             user=user,
             mode=SessionMode.SETUP
+        )
+
+
+class PaymentSerializer(BaseModelSerializer):
+    id = serializers.CharField(source='identifier', read_only=True)
+    status = EnumField(enum=PaymentStatus, read_only=True)
+    currency = serializers.CharField()
+    amount = serializers.IntegerField()
+
+    class Meta:
+        model = Payment
+        fields = ('id', 'status', 'currency', 'amount',)
+        read_only_fields = ('id', 'status',)
+
+    def validate_currency(self, currency):
+        user = self.context['request'].user
+
+        try:
+            currency = Currency.objects.get(code=currency, company=user.company)
+        except Currency.DoesNotExist:
+            raise serializers.ValidationError("Invalid currency.")
+
+        # TODO : check that it is a currency allowed by the Stripe system.
+
+        return currency
+
+    def validate(self, validated_data):
+        user = self.context['request'].user
+        currency = validated_data.get("currency")
+        amount = validated_data.get("amount")
+
+        if not user.stripe_cutsomer_id or not user.stripe_payment_method_id:
+            raise serializers.ValidationError(
+                {'non_field_errors': [
+                    "A setup session needs to be completed before a payment."
+                ]}
+            )
+
+        # Format the amount correctly (as a decimal value).
+        decimal_amount = from_cents(
+            amount=amount,
+            divisibility=currency.divisibility
+        )
+
+        # Check the size of the decimal number.
+        details = decimal_amount.as_tuple()
+        if abs(details.exponent) > 18 or len(details.digits) > 30:
+            raise serializers.ValidationError(
+                {"amount": ["Invalid amount."]}
+            )
+
+        validated_data["user"] = user
+        # Add the original integer amount in a temporary field.
+        validated_data["cent_amount"] = amount
+        # Override the original integer amount in the validated data.
+        validated_data["amount"] = decimal_amount
+        return validated_data
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        cent_amount = validated_data.pop("cent_amount")
+
+        # Initiate stripe variables.
+        stripe.api_key = user.company.stripe_api_key
+        stripe.api_version = os.environ.get('STRIPE_API_VERSION')
+
+        try:
+            intent = stripe.PaymentIntent.create(
+                amount=cent_amount,
+                currency=validated_data["currency"].code.lower(),
+                confirm=True,
+                off_session=True,
+                customer=user.stripe_customer_id,
+                payment_method=user.stripe_payment_method_id
+            )
+        except Exception as e:
+            # TODO : Add better error handing.
+            raise serializers.ValidationError(
+                {"non_field_errors": ["Error connecting to Stripe."]}
+            )
+
+        return Payment.objects.create(
+            identifier=intent["id"], **validated_data
         )

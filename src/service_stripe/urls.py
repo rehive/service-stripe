@@ -12,7 +12,7 @@ from . import views
         - SERVER receives webhooks and stores the updated session details
             - checkout.session.completed
             - checkout.session.cancelled?
-            - store the `setup_intent`
+            - get the `setup_intent`
     4. SERVER -> Store the setup intent object
         - SERVER retrieves a setup intent object
         - Store the payment method
@@ -43,19 +43,11 @@ urlpatterns = (
     re_path(r'^user/company/$', views.UserCompanyView.as_view(), name='user-company-view'),
     re_path(r'^user/sessions/$', views.UserListCreateSessionView.as_view(), name='user-sessions-list'),
     re_path(r'^user/sessions/(?P<identifier>\w+)/?$', views.UserSessionView.as_view(), name='user-sessions-view'),
-    # re_path(r'^user/payments/$', views.UserCreatePaymentView.as_view(), name='user-create-payment-view'),
+    re_path(r'^user/payments/$', views.UserListCreatePaymentView.as_view(), name='user-payments-list'),
+    re_path(r'^user/payments/(?P<identifier>\w+)/?$', views.UserPaymentView.as_view(), name='user-payments-view'),
 
     # Admin
     re_path(r'^admin/company/$', views.AdminCompanyView.as_view(), name='admin-company-view'),
-
-    # Admin
-    # re_path(r'^admin/checkout-session/$', views.AdminCreateCheckoutSessionView.as_view(), name='admin-create-checkout-session-view'),
-    # re_path(r'^admin/update-checkout-session/$', views.AdminUpdateCheckoutSessionView.as_view(), name='admin-update-checkout-session-view'),
-    # re_path(r'^admin/complete-checkout-session/?$', views.AdminCompleteCheckoutSessionView.as_view(), name='admin-complete-checkout-session-view'),
-    # re_path(r'^admin/checkout-session/(?P<session_id>\w+)/?$', views.AdminCheckoutSessionView.as_view(), name='admin-checkout-session-view'),
-    # re_path(r'^admin/payment-methods/(?P<payment_method_id>\w+)/?$', views.AdminPaymentMethodsView.as_view(), name='admin-payment-methods-view'),
-    # re_path(r'^admin/subscription/$', views.AdminSubscriptionView.as_view(), name='admin-subscription-view'),
-    # re_path(r'^webhook/$', views.WebhookView.as_view(), name='webhook-view'),
 )
 
 urlpatterns = format_suffix_patterns(urlpatterns)
