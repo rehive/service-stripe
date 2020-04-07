@@ -1,5 +1,6 @@
 deployment:
-  command: '[''gunicorn'', ''config.wsgi:application'', ''--config'', ''file:config/gunicorn.py'']'
+  command: ['gunicorn', 'config.wsgi:application', '--config', 'file:config/gunicorn.py']
+  args: null
   replicaCount: 1
   resources:
     limits:
@@ -7,8 +8,8 @@ deployment:
       memory: 512Mi
 image:
   pullPolicy: IfNotPresent
-  repository: gcr.io/rehive-services/service-stripe
-  tag: 0.0.0-rc.1
+  repository: rehiveservices.azurecr.io/service-stripe
+  tag: latest
 ingress:
   annotations:
     kubernetes.io/ingress.class: nginx
@@ -51,5 +52,7 @@ rabbitmq:
   enabled: false
 redis:
   enabled: false
+vendor:
+  name: azure
 workers:
   enabled: false

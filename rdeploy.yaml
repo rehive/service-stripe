@@ -1,20 +1,32 @@
-version: '1'
+version: '2'
 configs:
   staging:
     project_name: service-stripe
-    docker_image: gcr.io/rehive-services/service-stripe
-    cloud_project: rehive-services
-    cluster: staging
+    docker_image: rehiveservices.azurecr.io/service-stripe
+    cloud_provider:
+      name: azure
+      subscription_id: 57800aa9-e115-4ede-9b70-0e1ce97294f6
+      resource_group: rehive-services-staging
+      region: westeurope
+      kube_cluster: rehive-services-staging
+      container_registry: rehiveservices
     namespace: service-stripe-staging
     helm_values_path: ./etc/helm/staging/values.yaml
     helm_chart: rehive/rehive-service
-    helm_chart_version: 0.1.38
+    helm_version: 3.1.1
+    use_system_helm: false
+    helm_chart_version: 0.1.40
   production:
     project_name: service-stripe
     docker_image: gcr.io/rehive-services/service-stripe
-    cloud_project: rehive-services
-    cluster: production
+    cloud_provider:
+      name: gcp
+      project: rehive-services
+      kube_cluster: production
+      zone: europe-west1-c
     namespace: service-stripe
     helm_values_path: ./etc/helm/production/values.yaml
     helm_chart: rehive/rehive-service
-    helm_chart_version: 0.1.38
+    helm_chart_version: 0.1.40
+    use_system_helm: false
+    helm_version: 2.14.3
