@@ -302,10 +302,25 @@ class WebhookSerializer(serializers.Serializer):
 
         return validated_data
 
+
+class CurrencySerializer(BaseModelSerializer):
+
+    class Meta:
+        model = Currency
+        fields = (
+            'code',
+            'display_code',
+            'description',
+            'symbol',
+            'unit',
+            'divisibility',
+        )
+
 # Admin
 
 class AdminCompanySerializer(BaseModelSerializer):
     id = serializers.CharField(source='identifier', read_only=True)
+    stripe_currencies = CurrencySerializer(many=True, read_only=True)
 
     class Meta:
         model = Company
@@ -315,8 +330,35 @@ class AdminCompanySerializer(BaseModelSerializer):
             'stripe_publishable_api_key',
             'stripe_success_url',
             'stripe_cancel_url',
+            'stripe_currencies',
         )
         read_only_fields = ('id',)
+
+
+class AdminUpdateCompanySerializer(AdminCompanySerializer):
+    id = serializers.CharField(source='identifier', read_only=True)
+    stripe_currencies = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        write_only=True,
+        max_length=100
+    )
+
+    class Meta:
+        model = Company
+        fields = (
+            'id',
+            'stripe_api_key',
+            'stripe_publishable_api_key',
+            'stripe_success_url',
+            'stripe_cancel_url',
+            'stripe_currencies',
+
+        )
+        read_only_fields = ('id',)
+
+    def validate_stripe_currencies(self, currencies):
+        return Currency.objects.filter(code__in=currencies)
 
     def validate(self, validated_data):
         user = self.context['request'].user
@@ -357,6 +399,14 @@ class AdminCompanySerializer(BaseModelSerializer):
                 validated_data["stripe_secret"] = webhook["secret"]
 
         return validated_data
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        stripe_currencies = validated_data.pop("stripe_currencies")
+        if stripe_currencies:
+            instance.stripe_currencies.set(stripe_currencies)
+
+        return super().update(instance, validated_data)
 
 # User
 
@@ -439,13 +489,18 @@ class SessionSerializer(BaseModelSerializer):
 class PaymentSerializer(BaseModelSerializer):
     id = serializers.CharField(source='identifier', read_only=True)
     status = EnumField(enum=PaymentStatus, read_only=True)
-    currency = serializers.CharField()
-    amount = serializers.IntegerField()
+    currency = CurrencySerializer()
+    amount = serializers.IntegerField(source="integer_amount")
 
     class Meta:
         model = Payment
         fields = ('id', 'status', 'currency', 'amount',)
         read_only_fields = ('id', 'status',)
+
+
+class CreatePaymentSerializer(PaymentSerializer):
+    currency = serializers.CharField()
+    amount = serializers.IntegerField()
 
     def validate_currency(self, currency):
         user = self.context['request'].user
@@ -455,7 +510,9 @@ class PaymentSerializer(BaseModelSerializer):
         except Currency.DoesNotExist:
             raise serializers.ValidationError("Invalid currency.")
 
-        # TODO : check that it is a currency allowed by the Stripe system.
+        if not user.company.stripe_currencies.filter(
+                code=currency.code).exists():
+            raise serializers.ValidationError("Unsupported currency.")
 
         return currency
 

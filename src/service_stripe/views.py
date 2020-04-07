@@ -86,10 +86,19 @@ Admin Endpoints
 
 class AdminCompanyView(RetrieveUpdateAPIView):
     serializer_class = AdminCompanySerializer
+    serializer_classes = {
+        'PATCH': AdminUpdateCompanySerializer,
+        'PUT': AdminUpdateCompanySerializer,
+    }
     authentication_classes = (AdminAuthentication,)
 
     def get_object(self):
         return self.request.user.company
+
+    def update(self, request, *args, **kwargs):
+        kwargs['return_serializer'] = self.serializer_class
+        return super().update(request, *args, **kwargs)
+
 
 """
 User Endpoints
@@ -146,6 +155,9 @@ class UserListCreatePaymentView(ListCreateAPIView):
 
 class UserPaymentView(RetrieveAPIView):
     serializer_class = PaymentSerializer
+    serializer_classes = {
+        'POST': CreatePaymentSerializer,
+    }
     authentication_classes = (UserAuthentication,)
 
     def get_object(self):
@@ -156,3 +168,7 @@ class UserPaymentView(RetrieveAPIView):
             )
         except Payment.DoesNotExist:
             raise exceptions.NotFound()
+
+    def create(self, request, *args, **kwargs):
+        kwargs['return_serializer'] = self.serializer_class
+        return super().create(request, *args, **kwargs)

@@ -29,6 +29,9 @@ class Company(DateModel):
     stripe_publishable_api_key = models.CharField(max_length=100, null=True)
     stripe_success_url = models.CharField(max_length=150, null=True)
     stripe_cancel_url = models.CharField(max_length=150, null=True)
+    stripe_currencies = models.ManyToManyField(
+        'service_stripe.Currency', related_name="+"
+    )
     active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -54,7 +57,7 @@ class User(DateModel):
     identifier = models.UUIDField(unique=True, db_index=True)
     token = models.CharField(max_length=200, null=True)
     company = models.ForeignKey(
-        'service_stripe.Company', null=True, on_delete=models.CASCADE
+        'service_stripe.Company', null=True, on_delete=models.CASCADE,
     )
     stripe_customer_id = models.CharField(
         unique=True, db_index=True, max_length=64, null=True
@@ -160,6 +163,3 @@ class Payment(DateModel):
 
         # Self the payment with its new data.
         self.save()
-
-
-
