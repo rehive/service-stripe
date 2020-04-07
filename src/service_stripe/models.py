@@ -9,8 +9,9 @@ from django.db.models import Q
 from django.db import models, transaction
 from django_rehive_extras.models import DateModel
 from django_rehive_extras.fields import MoneyField
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import ArrayField, JSONField
 
+from service_stripe.utils.common import to_cents
 from service_stripe.enums import SessionMode, PaymentStatus
 
 
@@ -24,11 +25,16 @@ class Company(DateModel):
         related_name='admin_company',
         on_delete=models.CASCADE
     )
+    # Stripe API keys and secrets.
     stripe_api_key = models.CharField(max_length=100, null=True)
     stripe_secret = models.CharField(max_length=150, null=True)
     stripe_publishable_api_key = models.CharField(max_length=100, null=True)
+    # Setup session URLs.
     stripe_success_url = models.CharField(max_length=150, null=True)
     stripe_cancel_url = models.CharField(max_length=150, null=True)
+    # Payment intent return URL.
+    stripe_return_url = models.CharField(max_length=150, null=True)
+    # List of currencies supported for Stripe payments.
     stripe_currencies = models.ManyToManyField(
         'service_stripe.Currency', related_name="+"
     )
@@ -47,6 +53,7 @@ class Company(DateModel):
                 and self.stripe_publishable_api_key
                 and self.stripe_success_url
                 and self.stripe_cancel_url
+                and self.stripe_return_url
                 and self.active):
             return True
 
@@ -99,6 +106,10 @@ class Session(DateModel):
     identifier = models.CharField(max_length=64, unique=True, db_index=True)
     user = models.ForeignKey('service_stripe.User', on_delete=models.CASCADE)
     mode = EnumField(SessionMode, max_length=20, db_index=True)
+    completed = models.BooleanField(default=False)
+    # NOTE: Internal-only Stripe data, should not be accessible via the API.
+    # This is a point in time snapshot taken at the time of creation.
+    session_data = JSONField(null=True, blank=True)
 
     def __str__(self):
         return str(self.identifier)
@@ -123,9 +134,32 @@ class Payment(DateModel):
         models.CharField(max_length=64, blank=True),
         default=list
     )
+    # NOTE: Internal-only Stripe data, should not be accessible via the API.
+    # This is a point in time snapshot taken at the time of creation.
+    intent_data = JSONField(null=True, blank=True)
+    next_action = JSONField(null=True, blank=True)
 
     def __str__(self):
         return str(self.identifier)
+
+    def save(self, *args, **kwargs):
+        """
+        Unset the "next action" field when the status is updated to anything
+        besides processing.
+        """
+        if self.status in  (PaymentStatus.SUCCEEDED, PaymentStatus.FAILED,):
+            self.next_action = None
+
+        return super().save(*args, **kwargs)
+
+    @property
+    def integer_amount(self):
+        """
+        Get an integer from amount.
+        """
+
+        divisibility = Decimal(self.currency.divisibility)
+        return to_cents(self.amount, divisibility)
 
     @transaction.atomic
     def transition(self, status, error=None):
@@ -144,9 +178,11 @@ class Payment(DateModel):
             self.status = status
             transactions = [
                 {
-                    "amount": conversion.integer_to_total_amount,
+                    "user": self.user.identifier,
+                    "amount": self.integer_amount,
                     "currency": self.currency.code,
                     "status": "completed",
+                    "subtype": "deposit_stripe",
                     "tx_type": "credit",
                 }
             ]
@@ -155,7 +191,6 @@ class Payment(DateModel):
             collection = rehive.admin.transaction_collections.post(
                 transactions=transactions
             )
-
             self.collection = collection["id"]
             self.txns = [
                 txn['id'] for txn in collection["transactions"]

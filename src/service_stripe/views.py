@@ -100,6 +100,61 @@ class AdminCompanyView(RetrieveUpdateAPIView):
         return super().update(request, *args, **kwargs)
 
 
+class AdminListCurrencyView(ListAPIView):
+    serializer_class = CurrencySerializer
+    authentication_classes = (AdminAuthentication,)
+    filter_fields = ('code',)
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Currency.objects.none()
+
+        return Currency.objects.filter(
+            company=self.request.user.company
+        ).order_by('-created')
+
+
+class AdminCurrencyView(RetrieveAPIView):
+    serializer_class = CurrencySerializer
+    authentication_classes = (AdminAuthentication,)
+
+    def get_object(self):
+        try:
+            return Currency.objects.get(
+                company=self.request.user.company,
+                code__iexact=self.kwargs.get('code')
+            )
+        except Currency.DoesNotExist:
+            raise exceptions.NotFound()
+
+
+class AdminListPaymentView(ListAPIView):
+    serializer_class = AdminPaymentSerializer
+    authentication_classes = (UserAuthentication,)
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Payment.objects.none()
+
+        return Payment.objects.filter(
+            user__company=self.request.user.company
+        ).order_by('-created')
+
+
+class AdminPaymentView(RetrieveAPIView):
+    serializer_class = AdminPaymentSerializer
+    authentication_classes = (UserAuthentication,)
+
+    def get_object(self):
+        try:
+            return Payment.objects.get(
+                identifier=self.kwargs.get('identifier'),
+                user__company=self.request.user.company
+            )
+        except Payment.DoesNotExist:
+            raise exceptions.NotFound()
+
+
 """
 User Endpoints
 """
@@ -142,6 +197,9 @@ class UserSessionView(RetrieveAPIView):
 
 class UserListCreatePaymentView(ListCreateAPIView):
     serializer_class = PaymentSerializer
+    serializer_classes = {
+        'POST': CreatePaymentSerializer,
+    }
     authentication_classes = (UserAuthentication,)
 
     def get_queryset(self):
@@ -152,12 +210,13 @@ class UserListCreatePaymentView(ListCreateAPIView):
             user=self.request.user
         ).order_by('-created')
 
+    def create(self, request, *args, **kwargs):
+        kwargs['return_serializer'] = self.serializer_class
+        return super().create(request, *args, **kwargs)
+
 
 class UserPaymentView(RetrieveAPIView):
     serializer_class = PaymentSerializer
-    serializer_classes = {
-        'POST': CreatePaymentSerializer,
-    }
     authentication_classes = (UserAuthentication,)
 
     def get_object(self):
@@ -168,7 +227,3 @@ class UserPaymentView(RetrieveAPIView):
             )
         except Payment.DoesNotExist:
             raise exceptions.NotFound()
-
-    def create(self, request, *args, **kwargs):
-        kwargs['return_serializer'] = self.serializer_class
-        return super().create(request, *args, **kwargs)

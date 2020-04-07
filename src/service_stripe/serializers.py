@@ -11,6 +11,7 @@ from django.db import transaction
 from drf_rehive_extras.serializers import BaseModelSerializer
 from drf_rehive_extras.fields import TimestampField
 
+from config import settings
 from service_stripe.models import Company, User, Currency, Session, Payment
 from service_stripe.enums import SessionMode, PaymentStatus
 from service_stripe.utils.common import to_cents, from_cents
@@ -42,6 +43,20 @@ class EnumField(serializers.ChoiceField):
             self.fail('invalid_choice', input=data)
 
 
+class CurrencySerializer(BaseModelSerializer):
+
+    class Meta:
+        model = Currency
+        fields = (
+            'code',
+            'display_code',
+            'description',
+            'symbol',
+            'unit',
+            'divisibility',
+        )
+
+
 class ActivateSerializer(serializers.Serializer):
     token = serializers.CharField(write_only=True)
     id = serializers.CharField(source='identifier', read_only=True)
@@ -49,6 +64,8 @@ class ActivateSerializer(serializers.Serializer):
     stripe_publishable_api_key = serializers.CharField(read_only=True)
     stripe_success_url = serializers.CharField(read_only=True)
     stripe_cancel_url = serializers.CharField(read_only=True)
+    stripe_return_url = serializers.CharField(read_only=True)
+    stripe_currencies = CurrencySerializer(many=True, read_only=True)
 
     def validate(self, validated_data):
         token = validated_data.get('token')
@@ -271,6 +288,9 @@ class WebhookSerializer(serializers.Serializer):
                 user.stripe_customer_id = intent['metadata']['customer_id']
                 user.save()
 
+            session.completed = True
+            session.save()
+
         # Handle payment_intent.succeeded.
         # When a payment succeeds in Stripe.
         elif validated_data['type'] == 'payment_intent.succeeded':
@@ -302,20 +322,6 @@ class WebhookSerializer(serializers.Serializer):
 
         return validated_data
 
-
-class CurrencySerializer(BaseModelSerializer):
-
-    class Meta:
-        model = Currency
-        fields = (
-            'code',
-            'display_code',
-            'description',
-            'symbol',
-            'unit',
-            'divisibility',
-        )
-
 # Admin
 
 class AdminCompanySerializer(BaseModelSerializer):
@@ -330,6 +336,7 @@ class AdminCompanySerializer(BaseModelSerializer):
             'stripe_publishable_api_key',
             'stripe_success_url',
             'stripe_cancel_url',
+            'stripe_return_url',
             'stripe_currencies',
         )
         read_only_fields = ('id',)
@@ -352,6 +359,7 @@ class AdminUpdateCompanySerializer(AdminCompanySerializer):
             'stripe_publishable_api_key',
             'stripe_success_url',
             'stripe_cancel_url',
+            'stripe_return_url',
             'stripe_currencies',
 
         )
@@ -385,7 +393,8 @@ class AdminUpdateCompanySerializer(AdminCompanySerializer):
 
             # If no webhook exists matching the webhook requirement, create one.
             matched_webhooks = [w for w in webhooks if w.url == webhook_url]
-            if matched_webhooks < 1:
+
+            if len(matched_webhooks) < 1:
                 webhook = stripe.WebhookEndpoint.create(
                     url=webhook_url,
                     enabled_events=[
@@ -402,20 +411,36 @@ class AdminUpdateCompanySerializer(AdminCompanySerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        stripe_currencies = validated_data.pop("stripe_currencies")
+        stripe_currencies = validated_data.pop("stripe_currencies", None)
         if stripe_currencies:
             instance.stripe_currencies.set(stripe_currencies)
 
         return super().update(instance, validated_data)
 
+
+class AdminPaymentSerializer(BaseModelSerializer):
+    id = serializers.CharField(source='identifier', read_only=True)
+    user = serializers.CharField(read_only=True)
+    status = EnumField(enum=PaymentStatus, read_only=True)
+    currency = CurrencySerializer()
+    amount = serializers.IntegerField(source="integer_amount")
+
+    class Meta:
+        model = Payment
+        fields = ('id', 'user', 'status', 'currency', 'amount', 'next_action',)
+        read_only_fields = (
+            'id', 'user', 'status', 'currency', 'amount', 'next_action',
+        )
+
 # User
 
 class CompanySerializer(BaseModelSerializer):
     id = serializers.CharField(source='identifier', read_only=True)
+    stripe_currencies = CurrencySerializer(many=True, read_only=True)
 
     class Meta:
         model = Company
-        fields = ('id', 'stripe_publishable_api_key',)
+        fields = ('id', 'stripe_publishable_api_key', 'stripe_currencies',)
 
 
 class SessionSerializer(BaseModelSerializer):
@@ -424,8 +449,8 @@ class SessionSerializer(BaseModelSerializer):
 
     class Meta:
         model = Session
-        fields = ('id', 'mode',)
-        read_only_fields = ('id',)
+        fields = ('id', 'mode', 'completed',)
+        read_only_fields = ('id', 'completed',)
 
     def validate_mode(self, mode):
         user = self.context['request'].user
@@ -462,7 +487,7 @@ class SessionSerializer(BaseModelSerializer):
 
         data = {
             "payment_method_types": ['card'],
-            "mode": mode,
+            "mode": mode.value,
             "success_url": company.stripe_success_url \
                 + "?session_id={CHECKOUT_SESSION_ID}&succeeded=true",
             "cancel_url": company.stripe_cancel_url \
@@ -482,7 +507,8 @@ class SessionSerializer(BaseModelSerializer):
         return Session.objects.create(
             identifier=session["id"],
             user=user,
-            mode=SessionMode.SETUP
+            mode=mode,
+            session_data=session
         )
 
 
@@ -494,13 +520,20 @@ class PaymentSerializer(BaseModelSerializer):
 
     class Meta:
         model = Payment
-        fields = ('id', 'status', 'currency', 'amount',)
-        read_only_fields = ('id', 'status',)
+        fields = ('id', 'status', 'currency', 'amount', 'next_action',)
+        read_only_fields = (
+            'id', 'status', 'currency', 'amount', 'next_action',
+        )
 
 
 class CreatePaymentSerializer(PaymentSerializer):
     currency = serializers.CharField()
     amount = serializers.IntegerField()
+
+    class Meta:
+        model = Payment
+        fields = ('id', 'status', 'currency', 'amount', 'next_action',)
+        read_only_fields = ('id', 'status', 'next_action',)
 
     def validate_currency(self, currency):
         user = self.context['request'].user
@@ -564,9 +597,13 @@ class CreatePaymentSerializer(PaymentSerializer):
             off_session=True,
             customer=user.stripe_customer_id,
             payment_method=user.stripe_payment_method_id,
-            api_key=user.company.stripe_api_key
+            api_key=user.company.stripe_api_key,
+            return_url=user.company.stripe_return_url
         )
 
         return Payment.objects.create(
-            identifier=intent["id"], **validated_data
+            identifier=intent["id"],
+            intent_data=intent,
+            next_action=intent.get("next_action"),
+            **validated_data
         )
