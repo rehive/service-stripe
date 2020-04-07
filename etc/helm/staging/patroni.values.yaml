@@ -26,7 +26,7 @@ bootstrapParameters:
 walE:
   enabled: true
   envDir: /home/postgres/etc/wal-e.d/env
-  gcloudCredentials: gcloud-wale.json
+  gcloudCredentials: google-credentials-postgres.json
   scheduleCronJob: 00 01 * * *
   retainBackups: 2
   s3Bucket:
@@ -35,12 +35,12 @@ walE:
   backupThresholdPercentage: 30
 gcloudCredentials:
   enabled: true
-  secretName: gcloud-wale
+  secretName: google-credentials-postgres
 cloneWithWale:
-  enabled: true
+  enabled: false
   cloneScope: patroni-service-stripe-patroni
   cloneWalGcsBucket: service-stripe-staging-pgbackup
-  gcloudCredentials: gcloud-wale.json
+  gcloudCredentials: google-credentials-postgres.json
   cloneWaleEnvDir: /home/postgres/etc/clone-wal-e.d/env
 persistentVolume:
   accessModes:

@@ -1,0 +1,40 @@
+version: 1
+environment:
+  extensions:
+    staging:
+      azure:
+        subscription_id: 57800aa9-e115-4ede-9b70-0e1ce97294f6
+        resource_group: rehive-services-staging
+        region: westeurope
+      gcloud:
+        project: rehive-services
+        zone: europe-west1-c
+      kubernetes:
+        cloud_provider: azure
+        cluster: rehive-services-staging
+        namespace: service-stripe-staging
+    production:
+      gcloud:
+        project: rehive-services
+        zone: europe-west1-c
+      kubernetes:
+        cluster: production
+        namespace: service-stripe
+  platform: {}
+extensions:
+  serviceAccount:
+  - name: stripe-postgres
+    displayName: "Stripe Service Backup Writer"
+    description: "Service Account for the Stripe Service on production to write to postgres backups to the bucket"
+    role: extensions.bucket.writer
+    environment: production
+  - name: stripe-staging-postgres
+    displayName: "Stripe Service Backup Writer"
+    description: "Service Account for the Stripe Service on staging to write to postgres backups the bucket"
+    role: extensions.bucket.writer
+    environment: staging
+  bindings: []
+  # - members:
+  #   - user:test@rehive.com
+  #   role: projects/project-id/roles/extensions.team.developer
+platform: {}
