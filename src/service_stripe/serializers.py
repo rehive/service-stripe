@@ -276,16 +276,8 @@ class WebhookSerializer(serializers.Serializer):
                     stripe_session['setup_intent'],
                     api_key=session.user.company.stripe_api_key
                 )
-                # Attach the payment method to the customer (In Stripe).
-                stripe.PaymentMethod.attach(
-                    intent['payment_method'],
-                    customer=intent['metadata']['customer_id'],
-                    api_key=session.user.company.stripe_api_key
-                )
                 # Attach the payment method to the user (In Rehive).
                 user.stripe_payment_method_id = intent['payment_method']
-                # Attach the customer id to the user (In Rehive).
-                user.stripe_customer_id = intent['metadata']['customer_id']
                 user.save()
 
             session.completed = True
@@ -455,18 +447,11 @@ class SessionSerializer(BaseModelSerializer):
     def validate_mode(self, mode):
         user = self.context['request'].user
 
+        # NOTE : Currently we only support setup sessions.
         if mode != SessionMode.SETUP:
             raise serializers.ValidationError(
                 "Only setup sessions are suppported"
             )
-
-        # NOTE : Removed because we do not support the `payment` mode yet.
-        # A setup session must be completed before any other modes an be used.
-        # if (not user.stripe_customer_id
-        #         and mode != SessionMode.SETUP):
-        #     raise serializers.ValidationError(
-        #         "A setup session needs to be completed before a payment."
-        #     )
 
         return mode
 
@@ -478,6 +463,16 @@ class SessionSerializer(BaseModelSerializer):
                 {'non_field_errors': ["The company is improperly configured."]}
             )
 
+        # Ensure the user has a customer ID configured in Stripe.
+        if not user.stripe_customer_id:
+            # Call the Stripe SDK to create a user.
+            customer = stripe.Customer.create(
+                metadata={"rehive_id": str(user.identifier)},
+                api_key=user.company.stripe_api_key
+            )
+            user.stripe_customer_id = customer["id"]
+            user.save()
+
         return validated_data
 
     def create(self, validated_data):
@@ -488,15 +483,12 @@ class SessionSerializer(BaseModelSerializer):
         data = {
             "payment_method_types": ['card'],
             "mode": mode.value,
+            "customer": user.stripe_customer_id,
             "success_url": company.stripe_success_url \
                 + "?session_id={CHECKOUT_SESSION_ID}&succeeded=true",
             "cancel_url": company.stripe_cancel_url \
                 + "?session_id: {CHECKOUT_SESSION_ID}&succeeded=false"
         }
-
-        # Add customer data if any already exists.
-        if user.stripe_customer_id:
-            data["customer"] = user.stripe_customer_id
 
         # Call the Stripe SDK to create a session.
         session = stripe.checkout.Session.create(
