@@ -1,10 +1,13 @@
 deployment:
-  command: '[''gunicorn'', ''config.wsgi:application'', ''--config'', ''file:config/gunicorn.py'']'
+  command: ['gunicorn', 'config.wsgi:application', '--config', 'file:config/gunicorn.py']
   replicaCount: 1
   resources:
+    requests:
+      memory: 400M
+      cpu: 100m
     limits:
-      cpu: 500m
       memory: 512Mi
+      cpu: 500m
 image:
   pullPolicy: IfNotPresent
   repository: gcr.io/rehive-services/service-stripe
@@ -15,10 +18,10 @@ ingress:
     kubernetes.io/tls-acme: "true"
   enabled: true
   hosts:
-  - billing.services.rehive.io
+  - stripe.services.rehive.io
   tls:
   - hosts:
-    - billing.services.rehive.io
+    - stripe.services.rehive.io
     secretName: service-stripe-tls
 management:
   enabled: false

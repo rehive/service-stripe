@@ -27,6 +27,6 @@ configs:
     namespace: service-stripe
     helm_values_path: ./etc/helm/production/values.yaml
     helm_chart: rehive/rehive-service
-    helm_chart_version: 0.1.40
+    helm_chart_version: 0.2.2
     use_system_helm: false
     helm_version: 2.14.3
