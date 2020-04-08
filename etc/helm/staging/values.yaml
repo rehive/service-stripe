@@ -3,9 +3,8 @@ deployment:
   args: null
   replicaCount: 1
   resources:
+    requests:
     limits:
-      cpu: 500m
-      memory: 512Mi
 image:
   pullPolicy: IfNotPresent
   repository: rehiveservices.azurecr.io/service-stripe
@@ -16,10 +15,10 @@ ingress:
     kubernetes.io/tls-acme: "true"
   enabled: true
   hosts:
-  - billing.s.services.rehive.io
+  - stripe.s.services.rehive.io
   tls:
   - hosts:
-    - billing.s.services.rehive.io
+    - stripe.s.services.rehive.io
     secretName: service-stripe-staging-tls
 postgres:
   enabled: true
@@ -48,6 +47,8 @@ service:
     periodSeconds: 10
     timeoutSeconds: 2
   type: NodePort
+management:
+  enabled: false
 rabbitmq:
   enabled: false
 redis:
