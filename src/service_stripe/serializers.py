@@ -334,6 +334,19 @@ class AdminCompanySerializer(BaseModelSerializer):
         read_only_fields = ('id',)
 
 
+class AdminUserSerializer(BaseModelSerializer):
+    id = serializers.CharField(source='identifier', read_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            'id', 'stripe_customer_id', 'stripe_payment_method_id',
+        )
+        read_only_fields = (
+            'id', 'stripe_customer_id', 'stripe_payment_method_id',
+        )
+
+
 class AdminUpdateCompanySerializer(AdminCompanySerializer):
     id = serializers.CharField(source='identifier', read_only=True)
     stripe_currencies = serializers.ListField(

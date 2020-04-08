@@ -100,6 +100,33 @@ class AdminCompanyView(RetrieveUpdateAPIView):
         return super().update(request, *args, **kwargs)
 
 
+class AdminListUserView(ListAPIView):
+    serializer_class = AdminUserSerializer
+    authentication_classes = (AdminAuthentication,)
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return User.objects.none()
+
+        return User.objects.filter(
+            company=self.request.user.company
+        ).order_by('-created')
+
+
+class AdminUserView(RetrieveAPIView):
+    serializer_class = AdminUserSerializer
+    authentication_classes = (AdminAuthentication,)
+
+    def get_object(self):
+        try:
+            return User.objects.get(
+                company=self.request.user.company,
+                identifier=self.kwargs.get('identifier')
+            )
+        except User.DoesNotExist:
+            raise exceptions.NotFound()
+
+
 class AdminListCurrencyView(ListAPIView):
     serializer_class = CurrencySerializer
     authentication_classes = (AdminAuthentication,)

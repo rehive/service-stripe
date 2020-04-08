@@ -19,6 +19,8 @@ urlpatterns = (
 
     # Admin
     re_path(r'^admin/company/$', views.AdminCompanyView.as_view(), name='admin-company-view'),
+    re_path(r'^admin/users/$', views.AdminListUserView.as_view(), name='admin-users-list'),
+    re_path(r'^admin/users/(?P<identifier>([a-zA-Z0-9\_\-]+))/$', views.AdminUserView.as_view(), name='admin-users-view'),
     re_path(r'^admin/currencies/$', views.AdminListCurrencyView.as_view(), name='admin-currencies-list'),
     re_path(r'^admin/currencies/(?P<code>(\w+))/$', views.AdminCurrencyView.as_view(), name='admin-currencies-view'),
     re_path(r'^admin/payments/$', views.AdminListPaymentView.as_view(), name='admin-payments-list'),
