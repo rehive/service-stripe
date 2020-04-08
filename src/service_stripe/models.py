@@ -178,7 +178,7 @@ class Payment(DateModel):
             self.status = status
             transactions = [
                 {
-                    "user": self.user.identifier,
+                    "user": str(self.user.identifier),
                     "amount": self.integer_amount,
                     "currency": self.currency.code,
                     "status": "completed",
