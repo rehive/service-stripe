@@ -16,6 +16,11 @@ admin.transaction.change |
 
 ## Implementation
 
+The service encapsulates 2 Stripe flows:
+
+1. Checkout setup (payement details collection) : https://stripe.com/docs/payments/checkout/collecting
+2. Payment intent creation : https://stripe.com/docs/payments/payment-intents
+
 A summary of the stripe payment processor flow:
 
 1. **CLIENT** -> POST to `/user/sessions/` with a mode of `setup`.
