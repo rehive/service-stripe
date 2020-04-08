@@ -551,7 +551,7 @@ class CreatePaymentSerializer(PaymentSerializer):
                 {'non_field_errors': ["The company is improperly configured."]}
             )
 
-        if user.configured:
+        if not user.configured:
             raise serializers.ValidationError(
                 {'non_field_errors': [
                     "A setup session needs to be completed before a payment."

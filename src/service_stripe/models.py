@@ -184,6 +184,13 @@ class Payment(DateModel):
                     "status": "completed",
                     "subtype": "deposit_stripe",
                     "tx_type": "credit",
+                    "metadata": {
+                        "service_stripe": {
+                            "payment_intent": self.identifier,
+                            "payment_method": \
+                                self.user.stripe_payment_method_id,
+                        }
+                    }
                 }
             ]
 
