@@ -181,7 +181,7 @@ class Payment(DateModel):
                     "user": str(self.user.identifier),
                     "amount": self.integer_amount,
                     "currency": self.currency.code,
-                    "status": "completed",
+                    "status": "complete",
                     "subtype": "deposit_stripe",
                     "tx_type": "credit",
                     "metadata": {
