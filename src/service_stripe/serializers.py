@@ -273,7 +273,7 @@ class WebhookSerializer(serializers.Serializer):
             if stripe_session['setup_intent']:
                 # Retrieve the setup intent (From Stripe).
                 intent = stripe.SetupIntent.retrieve(
-                    session['setup_intent'],
+                    stripe_session['setup_intent'],
                     api_key=session.user.company.stripe_api_key
                 )
                 # Attach the payment method to the customer (In Stripe).
