@@ -76,7 +76,7 @@ class User(DateModel):
 
     @property
     def configured(self):
-        if (self.stripe_cutsomer_id
+        if (self.stripe_customer_id
                 and self.stripe_payment_method_id):
             return True
 
