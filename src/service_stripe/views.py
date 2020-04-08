@@ -8,11 +8,10 @@ import stripe
 from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from django.conf import settings
 from drf_rehive_extras.generics import *
 from rest_framework.parsers import BaseParser, ParseError
 from rest_framework.renderers import JSONRenderer
-from django.conf import settings
+from django.conf import settings as django_settings
 
 from service_stripe.authentication import *
 from service_stripe.serializers import *
@@ -36,7 +35,9 @@ class RawJSONParser(BaseParser):
 
     def parse(self, stream, media_type=None, parser_context=None):
         parser_context = parser_context or {}
-        encoding = parser_context.get('encoding', settings.DEFAULT_CHARSET)
+        encoding = parser_context.get(
+            'encoding', django_settings.DEFAULT_CHARSET
+        )
         request = parser_context.get('request')
         try:
             data = stream.read().decode(encoding)
@@ -76,7 +77,6 @@ class WebhookView(CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = WebhookSerializer
     parser_classes = (RawJSONParser,)
-
 
 
 """
