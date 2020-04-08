@@ -277,8 +277,8 @@ class WebhookSerializer(serializers.Serializer):
                     api_key=session.user.company.stripe_api_key
                 )
                 # Attach the payment method to the user (In Rehive).
-                user.stripe_payment_method_id = intent['payment_method']
-                user.save()
+                session.user.stripe_payment_method_id = intent['payment_method']
+                session.user.save()
 
             session.completed = True
             session.save()
