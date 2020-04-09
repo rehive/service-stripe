@@ -131,6 +131,7 @@ class AdminUserView(RetrieveAPIView):
 class AdminListUserPaymentMethodView(ListCreateAPIView):
     serializer_class = PaymentMethodSerializer
     authentication_classes = (AdminAuthentication,)
+    pagination_class = None
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -298,6 +299,7 @@ class UserPaymentView(RetrieveAPIView):
 class UserListPaymentMethodView(ListCreateAPIView):
     serializer_class = PaymentMethodSerializer
     authentication_classes = (UserAuthentication,)
+    pagination_class = None
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
