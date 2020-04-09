@@ -17,7 +17,7 @@ urlpatterns = (
     re_path(r'^user/payments/$', views.UserListCreatePaymentView.as_view(), name='user-payments-list'),
     re_path(r'^user/payments/(?P<identifier>\w+)/?$', views.UserPaymentView.as_view(), name='user-payments-view'),
     re_path(r'^user/payment-methods/$', views.UserListPaymentMethodView.as_view(), name='user-payments-list'),
-    re_path(r'^user/payment-methods/(?P<identifier>\w+)/?$', views.UserPaymentMethodView.as_view(), name='user-payment-methods-view'),
+    re_path(r'^user/payment-methods/(?P<id>\w+)/?$', views.UserPaymentMethodView.as_view(), name='user-payment-methods-view'),
 
     # Admin
     re_path(r'^admin/company/$', views.AdminCompanyView.as_view(), name='admin-company-view'),

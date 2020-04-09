@@ -128,7 +128,7 @@ class AdminUserView(RetrieveAPIView):
             raise exceptions.NotFound()
 
 
-class AdminListUserPaymentMethodView(ListCreateAPIView):
+class AdminListUserPaymentMethodView(ListAPIView):
     serializer_class = PaymentMethodSerializer
     authentication_classes = (AdminAuthentication,)
     pagination_class = None
@@ -296,7 +296,7 @@ class UserPaymentView(RetrieveAPIView):
             raise exceptions.NotFound()
 
 
-class UserListPaymentMethodView(ListCreateAPIView):
+class UserListPaymentMethodView(ListAPIView):
     serializer_class = PaymentMethodSerializer
     authentication_classes = (UserAuthentication,)
     pagination_class = None
