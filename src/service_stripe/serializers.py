@@ -59,6 +59,11 @@ class CurrencySerializer(BaseModelSerializer):
 
 
 class PaymentMethodCardSerializer(serializers.Serializer):
+    brand = serializers.CharField(read_only=True)
+    country = serializers.CharField(read_only=True)
+    last4 = serializers.CharField(read_only=True)
+    exp_month = serializers.IntegerField(read_only=True)
+    exp_year = serializers.IntegerField(read_only=True)
 
     class Meta:
         fields = ('brand', 'country', 'last4', 'exp_month', 'exp_year',)
@@ -68,6 +73,8 @@ class PaymentMethodCardSerializer(serializers.Serializer):
 
 
 class PaymentMethodSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    type = serializers.CharField(read_only=True)
     card = PaymentMethodCardSerializer(allow_null=True)
 
     class Meta:
