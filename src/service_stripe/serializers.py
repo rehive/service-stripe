@@ -373,7 +373,9 @@ class AdminUpdateCompanySerializer(AdminCompanySerializer):
         read_only_fields = ('id',)
 
     def validate_stripe_currencies(self, currencies):
-        return Currency.objects.filter(code__in=currencies)
+        return Currency.objects.filter(
+            code__in=currencies, company=self.context['request'].user.company
+        )
 
     def validate(self, validated_data):
         user = self.context['request'].user
