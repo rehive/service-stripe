@@ -12,6 +12,7 @@ from drf_rehive_extras.generics import *
 from rest_framework.parsers import BaseParser, ParseError
 from rest_framework.renderers import JSONRenderer
 from django.conf import settings as django_settings
+from django.core.exceptions import ObjectDoesNotExist
 
 from service_stripe.authentication import *
 from service_stripe.serializers import *
@@ -127,6 +128,44 @@ class AdminUserView(RetrieveAPIView):
             raise exceptions.NotFound()
 
 
+class AdminListUserPaymentMethodView(ListCreateAPIView):
+    serializer_class = PaymentMethodSerializer
+    authentication_classes = (AdminAuthentication,)
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return []
+
+        try:
+            user = User.objects.get(
+                company=self.request.user.company,
+                identifier=self.kwargs.get('identifier')
+            )
+        except User.DoesNotExist:
+            raise exceptions.NotFound()
+
+        return user.payment_methods()
+
+
+class AdminUserPaymentMethodView(RetrieveAPIView):
+    serializer_class = PaymentMethodSerializer
+    authentication_classes = (AdminAuthentication,)
+
+    def get_object(self):
+        try:
+            user = User.objects.get(
+                company=self.request.user.company,
+                identifier=self.kwargs.get('identifier')
+            )
+        except User.DoesNotExist:
+            raise exceptions.NotFound()
+
+        try:
+            return user.payment_method(self.kwargs.get('id'))
+        except ObjectDoesNotExist:
+            raise exceptions.NotFound()
+
+
 class AdminListCurrencyView(ListAPIView):
     serializer_class = CurrencySerializer
     authentication_classes = (AdminAuthentication,)
@@ -157,7 +196,7 @@ class AdminCurrencyView(RetrieveAPIView):
 
 class AdminListPaymentView(ListAPIView):
     serializer_class = AdminPaymentSerializer
-    authentication_classes = (UserAuthentication,)
+    authentication_classes = (AdminAuthentication,)
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -170,7 +209,7 @@ class AdminListPaymentView(ListAPIView):
 
 class AdminPaymentView(RetrieveAPIView):
     serializer_class = AdminPaymentSerializer
-    authentication_classes = (UserAuthentication,)
+    authentication_classes = (AdminAuthentication,)
 
     def get_object(self):
         try:
@@ -253,4 +292,26 @@ class UserPaymentView(RetrieveAPIView):
                 user=self.request.user
             )
         except Payment.DoesNotExist:
+            raise exceptions.NotFound()
+
+
+class UserListPaymentMethodView(ListCreateAPIView):
+    serializer_class = PaymentMethodSerializer
+    authentication_classes = (UserAuthentication,)
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return []
+
+        return self.request.user.payment_methods()
+
+
+class UserPaymentMethodView(RetrieveAPIView):
+    serializer_class = PaymentMethodSerializer
+    authentication_classes = (UserAuthentication,)
+
+    def get_object(self):
+        try:
+            return self.request.user.payment_method(self.kwargs.get('id'))
+        except ObjectDoesNotExist:
             raise exceptions.NotFound()

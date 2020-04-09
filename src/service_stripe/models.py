@@ -10,6 +10,7 @@ from django.db import models, transaction
 from django_rehive_extras.models import DateModel
 from django_rehive_extras.fields import MoneyField
 from django.contrib.postgres.fields import ArrayField, JSONField
+from django.core.exceptions import ObjectDoesNotExist
 
 from service_stripe.utils.common import to_cents
 from service_stripe.enums import SessionMode, PaymentStatus
@@ -69,18 +70,50 @@ class User(DateModel):
     stripe_customer_id = models.CharField(
         unique=True, db_index=True, max_length=64, null=True
     )
-    stripe_payment_method_id = models.CharField(max_length=64, null=True)
 
     def __str__(self):
         return str(self.identifier)
 
     @property
     def configured(self):
-        if (self.stripe_customer_id
-                and self.stripe_payment_method_id):
+        if (self.stripe_customer_id):
             return True
 
         return False
+
+    def payment_methods(self):
+        """
+        Get the user's payment methods from stripe
+
+        NOTE: Only retrieves a max of 100 results.
+        """
+
+        if not self.configured:
+            return []
+
+        return stripe.PaymentMethod.list(
+            customer=self.stripe_customer_id,
+            type="card",
+            limit=100,
+            api_key=self.company.stripe_api_key
+        )
+
+    def payment_method(self, identifier):
+        """
+        Get a specific payment method belonging to a user.
+        """
+
+        if not self.configured:
+            raise ObjectDoesNotExist()
+
+        method = stripe.PaymentMethod.retrieve(
+            identifier, api_key=self.company.stripe_api_key
+        )
+
+        if method["customer"] != self.stripe_customer_id:
+            raise ObjectDoesNotExist()
+
+        return method
 
 
 class Currency(DateModel):
@@ -122,6 +155,7 @@ class Payment(DateModel):
         'service_stripe.Currency', on_delete=models.CASCADE
     )
     amount = MoneyField(default=Decimal(0))
+    payment_method = models.CharField(max_length=64)
     status = EnumField(
         PaymentStatus,
         max_length=24,
@@ -187,8 +221,7 @@ class Payment(DateModel):
                     "metadata": {
                         "service_stripe": {
                             "payment_intent": self.identifier,
-                            "payment_method": \
-                                self.user.stripe_payment_method_id,
+                            "payment_method": self.payment_method
                         }
                     }
                 }
