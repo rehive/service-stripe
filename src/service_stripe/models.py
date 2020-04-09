@@ -96,7 +96,7 @@ class User(DateModel):
             type="card",
             limit=100,
             api_key=self.company.stripe_api_key
-        )
+        )["data"]
 
     def payment_method(self, identifier):
         """

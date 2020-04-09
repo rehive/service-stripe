@@ -68,7 +68,7 @@ class PaymentMethodCardSerializer(serializers.Serializer):
 
 
 class PaymentMethodSerializer(serializers.Serializer):
-    card = PaymentMethodCardSerializer()
+    card = PaymentMethodCardSerializer(allow_null=True)
 
     class Meta:
         fields = ('id', 'type', 'card',)
