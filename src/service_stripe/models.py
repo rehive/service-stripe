@@ -98,7 +98,7 @@ class User(DateModel):
             api_key=self.company.stripe_api_key
         )["data"]
 
-    def payment_method(self, identifier):
+    def payment_method(self, stripe_id):
         """
         Get a specific payment method belonging to a user.
         """
@@ -107,7 +107,7 @@ class User(DateModel):
             raise ObjectDoesNotExist()
 
         method = stripe.PaymentMethod.retrieve(
-            identifier, api_key=self.company.stripe_api_key
+            stripe_id, api_key=self.company.stripe_api_key
         )
 
         if method["customer"] != self.stripe_customer_id:
