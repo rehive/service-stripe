@@ -243,8 +243,11 @@ class DeactivateSerializer(serializers.Serializer):
 
 
 class WebhookSerializer(serializers.Serializer):
-    data = serializers.JSONField()
-    type = serializers.CharField()
+    data = serializers.JSONField(write_only=True)
+    type = serializers.CharField(write_only=True)
+    message = serializers.CharField(
+        allow_null=True, allow_blank=True, required=False, read_only=True
+    )
 
     def validate(self, validated_data):
         try:
@@ -291,9 +294,8 @@ class WebhookSerializer(serializers.Serializer):
                 # The session must have been initiated via this service.
                 session = Session.objects.get(identifier=stripe_session["id"])
             except Session.DoesNotExist:
-                raise serializers.ValidationError(
-                    {"non_field_errors": ["Invalid session."]}
-                )
+                # Do not throw a response error but include a message.
+                return {"message": "Invalid session for this service."}
 
             session.completed = True
             session.save()
@@ -305,9 +307,8 @@ class WebhookSerializer(serializers.Serializer):
             try:
                 payment = Payment.objects.get(identifier=intent["id"])
             except Payment.DoesNotExist:
-                raise serializers.ValidationError(
-                    {"non_field_errors": ["Invalid payment."]}
-                )
+                # Do not throw a response error but include a message.
+                return {"message": "Invalid payment for this service."}
 
             payment.transition(PaymentStatus.SUCCEEDED)
 
@@ -318,9 +319,8 @@ class WebhookSerializer(serializers.Serializer):
             try:
                 payment = Payment.objects.get(identifier=intent["id"])
             except Payment.DoesNotExist:
-                raise serializers.ValidationError(
-                    {"non_field_errors": ["Invalid payment."]}
-                )
+                # Do not throw a response error but include a message.
+                return {"message": "Invalid payment for this service."}
 
             error_message = intent['last_payment_error']['message'] \
                 if intent.get('last_payment_error') else None
