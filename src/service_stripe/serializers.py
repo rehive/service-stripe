@@ -5,6 +5,7 @@ from datetime import datetime, date
 from decimal import Decimal
 
 import stripe
+from requests.models import PreparedRequest
 from rehive import Rehive, APIException
 from rest_framework import serializers
 from django.db import transaction
@@ -87,9 +88,6 @@ class ActivateSerializer(serializers.Serializer):
     id = serializers.CharField(source='identifier', read_only=True)
     stripe_api_key = serializers.CharField(read_only=True)
     stripe_publishable_api_key = serializers.CharField(read_only=True)
-    stripe_success_url = serializers.CharField(read_only=True)
-    stripe_cancel_url = serializers.CharField(read_only=True)
-    stripe_return_url = serializers.CharField(read_only=True)
     stripe_currencies = CurrencySerializer(many=True, read_only=True)
 
     def validate(self, validated_data):
@@ -341,9 +339,6 @@ class AdminCompanySerializer(BaseModelSerializer):
             'id',
             'stripe_api_key',
             'stripe_publishable_api_key',
-            'stripe_success_url',
-            'stripe_cancel_url',
-            'stripe_return_url',
             'stripe_currencies',
         )
         read_only_fields = ('id',)
@@ -364,9 +359,6 @@ class AdminUpdateCompanySerializer(AdminCompanySerializer):
             'id',
             'stripe_api_key',
             'stripe_publishable_api_key',
-            'stripe_success_url',
-            'stripe_cancel_url',
-            'stripe_return_url',
             'stripe_currencies',
 
         )
@@ -453,6 +445,8 @@ class AdminPaymentSerializer(BaseModelSerializer):
             'status',
             'currency',
             'amount',
+            'payment_method',
+            'return_url',
             'next_action',
             'created',
             'updated',
@@ -463,6 +457,8 @@ class AdminPaymentSerializer(BaseModelSerializer):
             'status',
             'currency',
             'amount',
+            'payment_method',
+            'return_url',
             'next_action',
             'created',
             'updated',
@@ -487,7 +483,15 @@ class SessionSerializer(BaseModelSerializer):
 
     class Meta:
         model = Session
-        fields = ('id', 'mode', 'completed', 'created', 'updated',)
+        fields = (
+            'id',
+            'mode',
+            'success_url',
+            'cancel_url',
+            'completed',
+            'created',
+            'updated',
+        )
         read_only_fields = ('id', 'completed', 'created', 'updated',)
 
     def validate_mode(self, mode):
@@ -500,6 +504,24 @@ class SessionSerializer(BaseModelSerializer):
             )
 
         return mode
+
+    def validate_success_ur(self, success_url):
+        req = PreparedRequest()
+        params = {
+            "session_id": "{CHECKOUT_SESSION_ID}",
+            "succeeded": "true"
+        }
+        req.prepare_url(success_url, params)
+        return req.url
+
+    def validate_cancel_ur(self, cancel_url):
+        req = PreparedRequest()
+        params = {
+            "session_id": "{CHECKOUT_SESSION_ID}",
+            "succeeded": "false"
+        }
+        req.prepare_url(cancel_url, params)
+        return req.url
 
     def validate(self, validated_data):
         user = self.context['request'].user
@@ -525,15 +547,15 @@ class SessionSerializer(BaseModelSerializer):
         user = self.context['request'].user
         company = user.company
         mode = validated_data.get("mode")
+        success_url = validated_data.get("success_url")
+        cancel_url = validated_data.get("cancel_url")
 
         data = {
             "payment_method_types": ['card'],
             "mode": mode.value,
             "customer": user.stripe_customer_id,
-            "success_url": company.stripe_success_url \
-                + "?session_id={CHECKOUT_SESSION_ID}&succeeded=true",
-            "cancel_url": company.stripe_cancel_url \
-                + "?session_id: {CHECKOUT_SESSION_ID}&succeeded=false"
+            "success_url": success_url,
+            "cancel_url": cancel_url
         }
 
         # Call the Stripe SDK to create a session.
@@ -546,6 +568,8 @@ class SessionSerializer(BaseModelSerializer):
             identifier=session["id"],
             user=user,
             mode=mode,
+            success_url=success_url,
+            cancel_url=cancel_url,
             session_data=session
         )
 
@@ -566,6 +590,7 @@ class PaymentSerializer(BaseModelSerializer):
             'currency',
             'amount',
             'payment_method',
+            'return_url',
             'next_action',
             'created',
             'updated',
@@ -576,6 +601,7 @@ class PaymentSerializer(BaseModelSerializer):
             'currency',
             'amount',
             'payment_method',
+            'return_url',
             'next_action',
             'created',
             'updated',
@@ -594,6 +620,7 @@ class CreatePaymentSerializer(PaymentSerializer):
             'currency',
             'amount',
             'payment_method',
+            'return_url',
             'next_action',
             'created',
             'updated',
@@ -658,6 +685,7 @@ class CreatePaymentSerializer(PaymentSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
+        # Remove this from validated_data as we don't need it on the model.
         cent_amount = validated_data.pop("cent_amount")
 
         intent = stripe.PaymentIntent.create(
@@ -668,7 +696,7 @@ class CreatePaymentSerializer(PaymentSerializer):
             customer=user.stripe_customer_id,
             payment_method=validated_data["payment_method"],
             api_key=user.company.stripe_api_key,
-            return_url=user.company.stripe_return_url
+            return_url=validated_data["return_url"]
         )
 
         return Payment.objects.create(

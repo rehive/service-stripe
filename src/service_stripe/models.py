@@ -30,11 +30,6 @@ class Company(DateModel):
     stripe_api_key = models.CharField(max_length=100, null=True)
     stripe_secret = models.CharField(max_length=150, null=True)
     stripe_publishable_api_key = models.CharField(max_length=100, null=True)
-    # Setup session URLs.
-    stripe_success_url = models.CharField(max_length=150, null=True)
-    stripe_cancel_url = models.CharField(max_length=150, null=True)
-    # Payment intent return URL.
-    stripe_return_url = models.CharField(max_length=150, null=True)
     # List of currencies supported for Stripe payments.
     stripe_currencies = models.ManyToManyField(
         'service_stripe.Currency', related_name="+"
@@ -52,9 +47,6 @@ class Company(DateModel):
         if (self.stripe_api_key
                 and self.stripe_secret
                 and self.stripe_publishable_api_key
-                and self.stripe_success_url
-                and self.stripe_cancel_url
-                and self.stripe_return_url
                 and self.active):
             return True
 
@@ -139,6 +131,8 @@ class Session(DateModel):
     identifier = models.CharField(max_length=64, unique=True, db_index=True)
     user = models.ForeignKey('service_stripe.User', on_delete=models.CASCADE)
     mode = EnumField(SessionMode, max_length=20, db_index=True)
+    success_url = models.URLField(max_length=250)
+    cancel_url = models.URLField(max_length=250)
     completed = models.BooleanField(default=False)
     # NOTE: Internal-only Stripe data, should not be accessible via the API.
     # This is a point in time snapshot taken at the time of creation.
@@ -156,6 +150,7 @@ class Payment(DateModel):
     )
     amount = MoneyField(default=Decimal(0))
     payment_method = models.CharField(max_length=64)
+    return_url = models.URLField(max_length=250)
     status = EnumField(
         PaymentStatus,
         max_length=24,
