@@ -73,6 +73,13 @@ class User(DateModel):
 
         return False
 
+    @property
+    def last_payment_method(self):
+        try:
+            return self.payment_set.latest('created').payment_method
+        except Payment.DoesNotExist:
+            return None
+
     def payment_methods(self):
         """
         Get the user's payment methods from stripe

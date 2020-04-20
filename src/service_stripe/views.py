@@ -227,6 +227,14 @@ User Endpoints
 """
 
 
+class UserView(RetrieveAPIView):
+    serializer_class = UserSerializer
+    authentication_classes = (UserAuthentication,)
+
+    def get_object(self):
+        return self.request.user
+
+
 class UserCompanyView(RetrieveAPIView):
     serializer_class = CompanySerializer
     authentication_classes = (UserAuthentication,)

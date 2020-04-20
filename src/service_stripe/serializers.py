@@ -424,8 +424,10 @@ class AdminUserSerializer(BaseModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'stripe_customer_id',)
-        read_only_fields = ('id', 'stripe_customer_id',)
+        fields = ('id', 'stripe_customer_id', 'last_payment_method',)
+        read_only_fields = (
+            'id', 'stripe_customer_id', 'last_payment_method',
+        )
 
 
 class AdminPaymentSerializer(BaseModelSerializer):
@@ -465,6 +467,17 @@ class AdminPaymentSerializer(BaseModelSerializer):
         )
 
 # User
+
+class UserSerializer(BaseModelSerializer):
+    id = serializers.CharField(source='identifier', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'stripe_customer_id', 'last_payment_method',)
+        read_only_fields = (
+            'id', 'stripe_customer_id', 'last_payment_method',
+        )
+
 
 class CompanySerializer(BaseModelSerializer):
     id = serializers.CharField(source='identifier', read_only=True)

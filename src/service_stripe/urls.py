@@ -11,6 +11,7 @@ urlpatterns = (
     re_path(r'^webhook/(?P<company_id>\w+)/$', views.WebhookView.as_view(), name='webhook'),
 
     # User
+    re_path(r'^user/$', views.UserView.as_view(), name='user-view'),
     re_path(r'^user/company/$', views.UserCompanyView.as_view(), name='user-company-view'),
     re_path(r'^user/sessions/$', views.UserListCreateSessionView.as_view(), name='user-sessions-list'),
     re_path(r'^user/sessions/(?P<identifier>\w+)/?$', views.UserSessionView.as_view(), name='user-sessions-view'),
