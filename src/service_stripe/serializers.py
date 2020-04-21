@@ -445,11 +445,13 @@ class AdminPaymentSerializer(BaseModelSerializer):
             'id',
             'user',
             'status',
+            'error',
             'currency',
             'amount',
             'payment_method',
             'return_url',
             'next_action',
+            'collection',
             'created',
             'updated',
         )
@@ -457,11 +459,13 @@ class AdminPaymentSerializer(BaseModelSerializer):
             'id',
             'user',
             'status',
+            'error',
             'currency',
             'amount',
             'payment_method',
             'return_url',
             'next_action',
+            'collection',
             'created',
             'updated',
         )
@@ -600,22 +604,26 @@ class PaymentSerializer(BaseModelSerializer):
         fields = (
             'id',
             'status',
+            'error',
             'currency',
             'amount',
             'payment_method',
             'return_url',
             'next_action',
+            'collection',
             'created',
             'updated',
         )
         read_only_fields = (
             'id',
             'status',
+            'error',
             'currency',
             'amount',
             'payment_method',
             'return_url',
             'next_action',
+            'collection',
             'created',
             'updated',
         )
@@ -630,16 +638,24 @@ class CreatePaymentSerializer(PaymentSerializer):
         fields = (
             'id',
             'status',
+            'error',
             'currency',
             'amount',
             'payment_method',
             'return_url',
             'next_action',
+            'collection',
             'created',
             'updated',
         )
         read_only_fields = (
-            'id', 'status', 'next_action', 'created', 'updated',
+            'id',
+            'status',
+            'error',
+            'next_action',
+            'collection',
+            'created',
+            'updated',
         )
 
     def validate_currency(self, currency):
