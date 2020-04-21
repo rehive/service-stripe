@@ -701,16 +701,20 @@ class CreatePaymentSerializer(PaymentSerializer):
         # Remove this from validated_data as we don't need it on the model.
         cent_amount = validated_data.pop("cent_amount")
 
-        intent = stripe.PaymentIntent.create(
-            amount=cent_amount,
-            currency=validated_data["currency"].code.lower(),
-            confirm=True,
-            off_session=True,
-            customer=user.stripe_customer_id,
-            payment_method=validated_data["payment_method"],
-            api_key=user.company.stripe_api_key,
-            return_url=validated_data["return_url"]
-        )
+        try:
+            intent = stripe.PaymentIntent.create(
+                amount=cent_amount,
+                currency=validated_data["currency"].code.lower(),
+                confirm=True,
+                customer=user.stripe_customer_id,
+                payment_method=validated_data["payment_method"],
+                api_key=user.company.stripe_api_key,
+                return_url=validated_data["return_url"]
+            )
+        except stripe.error.CardError as exc:
+            raise serializers.ValidationError(
+                {'non_field_errors': [exc.error.message]}
+            )
 
         return Payment.objects.create(
             identifier=intent["id"],
