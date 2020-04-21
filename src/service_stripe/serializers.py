@@ -518,7 +518,7 @@ class SessionSerializer(BaseModelSerializer):
 
         return mode
 
-    def validate_success_ur(self, success_url):
+    def validate_success_url(self, success_url):
         req = PreparedRequest()
         params = {
             "session_id": "{CHECKOUT_SESSION_ID}",
@@ -527,7 +527,7 @@ class SessionSerializer(BaseModelSerializer):
         req.prepare_url(success_url, params)
         return req.url
 
-    def validate_cancel_ur(self, cancel_url):
+    def validate_cancel_url(self, cancel_url):
         req = PreparedRequest()
         params = {
             "session_id": "{CHECKOUT_SESSION_ID}",

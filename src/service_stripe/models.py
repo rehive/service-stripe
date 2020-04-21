@@ -207,7 +207,7 @@ class Payment(DateModel):
         # Handle failed payments.
         if status == PaymentStatus.FAILED:
             self.status = status
-            self.error = errror
+            self.error = error
 
         # Handle succeeded payments.
         elif status == PaymentStatus.SUCCEEDED:
