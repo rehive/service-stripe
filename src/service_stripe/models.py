@@ -199,44 +199,61 @@ class Payment(DateModel):
 
     @transaction.atomic
     def transition(self, status, error=None):
-        # Ensure that failed or succeeded payments aren't transitioned.
-        # NOTE: this will be removed once we add this functionality.
-        if self.status in (PaymentStatus.FAILED, PaymentStatus.SUCCEEDED,):
-            raise ValueError("Cannot change the payment status.")
+        # Do nothing if the status is already the same.
+        if self.status == status:
+            return
+
+        # Initiate the Rehive SDK.
+        rehive = Rehive(self.user.company.admin.token)
 
         # Handle failed payments.
         if status == PaymentStatus.FAILED:
             self.status = status
             self.error = error
 
+            # If a transaction collection already exists then we need to
+            # transition it to failed as well.
+            if self.collection:
+                rehive.admin.transaction_collections.update(
+                    self.collection, status="failed"
+                )
+
         # Handle succeeded payments.
         elif status == PaymentStatus.SUCCEEDED:
             self.status = status
-            transactions = [
-                {
-                    "user": str(self.user.identifier),
-                    "amount": self.integer_amount,
-                    "currency": self.currency.code,
-                    "status": "complete",
-                    "subtype": "deposit_stripe",
-                    "tx_type": "credit",
-                    "metadata": {
-                        "service_stripe": {
-                            "payment_intent": self.identifier,
-                            "payment_method": self.payment_method
+
+            # If a transaction collection already exists then we need to
+            # transition it to complete as well.
+            if self.collection:
+                rehive.admin.transaction_collections.update(
+                    self.collection, status="complete"
+                )
+
+            # If no transaction collection exists then one needs to be created.
+            else:
+                transactions = [
+                    {
+                        "user": str(self.user.identifier),
+                        "amount": self.integer_amount,
+                        "currency": self.currency.code,
+                        "status": "complete",
+                        "subtype": "deposit_stripe",
+                        "tx_type": "credit",
+                        "metadata": {
+                            "service_stripe": {
+                                "payment_intent": self.identifier,
+                                "payment_method": self.payment_method
+                            }
                         }
                     }
-                }
-            ]
+                ]
+                collection = rehive.admin.transaction_collections.post(
+                    transactions=transactions
+                )
+                self.collection = collection["id"]
+                self.txns = [
+                    txn['id'] for txn in collection["transactions"]
+                ]
 
-            rehive = Rehive(self.user.company.admin.token)
-            collection = rehive.admin.transaction_collections.post(
-                transactions=transactions
-            )
-            self.collection = collection["id"]
-            self.txns = [
-                txn['id'] for txn in collection["transactions"]
-            ]
-
-        # Self the payment with its new data.
+        # Save the payment with its new data.
         self.save()
