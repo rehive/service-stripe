@@ -1,5 +1,9 @@
 deployment:
-  command: ['gunicorn', 'config.wsgi:application', '--config', 'file:config/gunicorn.py']
+  command:
+    - gunicorn
+    - "config.wsgi:application"
+  args:
+    config: "file:config/gunicorn.py"
   replicaCount: 1
   resources:
     requests:
