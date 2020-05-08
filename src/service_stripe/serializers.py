@@ -281,19 +281,25 @@ class WebhookSerializer(serializers.Serializer):
                 {"non_field_errors": ["Invalid signature"]}
             )
 
+        validated_data["company"] = company
         return validated_data
 
     def create(self, validated_data):
+        company = validated_data.get("company")
+
         # Handle: checkout.session.completed.
         # When a setup session had been completed.
         if validated_data['type'] == 'checkout.session.completed':
             stripe_session = validated_data['data']['object']
             try:
-                # The session must have been initiated via this service.
-                session = Session.objects.get(identifier=stripe_session["id"])
+                # The session must have been initiated via this service and
+                # belong to the correct company.
+                session = Session.objects.get(
+                    identifier=stripe_session["id"], user__company=company
+                )
             except Session.DoesNotExist:
                 # Do not throw a response error but include a message.
-                return {"message": "Invalid session for this service."}
+                return {"message": "Invalid session for this service/company."}
 
             session.completed = True
             session.save()
@@ -303,10 +309,12 @@ class WebhookSerializer(serializers.Serializer):
         elif validated_data['type'] == 'payment_intent.succeeded':
             intent = validated_data['data']['object']
             try:
-                payment = Payment.objects.get(identifier=intent["id"])
+                payment = Payment.objects.get(
+                    identifier=intent["id"], user__company=company
+                )
             except Payment.DoesNotExist:
                 # Do not throw a response error but include a message.
-                return {"message": "Invalid payment for this service."}
+                return {"message": "Invalid payment for this service/company."}
 
             payment.transition(PaymentStatus.SUCCEEDED)
 
@@ -315,10 +323,12 @@ class WebhookSerializer(serializers.Serializer):
         elif validated_data['type'] == 'payment_intent.payment_failed':
             intent = validated_data['data']['object']
             try:
-                payment = Payment.objects.get(identifier=intent["id"])
+                payment = Payment.objects.get(
+                    identifier=intent["id"], user__company=company
+                )
             except Payment.DoesNotExist:
                 # Do not throw a response error but include a message.
-                return {"message": "Invalid payment for this service."}
+                return {"message": "Invalid payment for this service/company."}
 
             error_message = intent['last_payment_error']['message'] \
                 if intent.get('last_payment_error') else None

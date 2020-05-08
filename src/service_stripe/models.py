@@ -199,50 +199,53 @@ class Payment(DateModel):
 
     @transaction.atomic
     def transition(self, status, error=None):
+        # Lock on the payment to prevent race conditions.
+        payment = Payment.objects.select_for_update().get(id=self.id)
+
         # Do nothing if the status is already the same.
-        if self.status == status:
+        if payment.status == status:
             return
 
         # Initiate the Rehive SDK.
-        rehive = Rehive(self.user.company.admin.token)
+        rehive = Rehive(payment.user.company.admin.token)
 
         # Handle failed payments.
         if status == PaymentStatus.FAILED:
-            self.status = status
-            self.error = error
+            payment.status = status
+            payment.error = error
 
             # If a transaction collection already exists then we need to
             # transition it to failed as well.
-            if self.collection:
+            if payment.collection:
                 rehive.admin.transaction_collections.update(
-                    self.collection, status="failed"
+                    payment.collection, status="failed"
                 )
 
         # Handle succeeded payments.
         elif status == PaymentStatus.SUCCEEDED:
-            self.status = status
+            payment.status = status
 
             # If a transaction collection already exists then we need to
             # transition it to complete as well.
-            if self.collection:
+            if payment.collection:
                 rehive.admin.transaction_collections.update(
-                    self.collection, status="complete"
+                    payment.collection, status="complete"
                 )
 
             # If no transaction collection exists then one needs to be created.
             else:
                 transactions = [
                     {
-                        "user": str(self.user.identifier),
-                        "amount": self.integer_amount,
-                        "currency": self.currency.code,
+                        "user": str(payment.user.identifier),
+                        "amount": payment.integer_amount,
+                        "currency": payment.currency.code,
                         "status": "complete",
                         "subtype": "deposit_stripe",
                         "tx_type": "credit",
                         "metadata": {
                             "service_stripe": {
-                                "payment_intent": self.identifier,
-                                "payment_method": self.payment_method
+                                "payment_intent": payment.identifier,
+                                "payment_method": payment.payment_method
                             }
                         }
                     }
@@ -250,10 +253,10 @@ class Payment(DateModel):
                 collection = rehive.admin.transaction_collections.post(
                     transactions=transactions
                 )
-                self.collection = collection["id"]
-                self.txns = [
+                payment.collection = collection["id"]
+                payment.txns = [
                     txn['id'] for txn in collection["transactions"]
                 ]
 
         # Save the payment with its new data.
-        self.save()
+        payment.save()
