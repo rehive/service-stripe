@@ -27,9 +27,9 @@ class Company(DateModel):
         on_delete=models.CASCADE
     )
     # Stripe API keys and secrets.
-    stripe_api_key = models.CharField(max_length=100, null=True)
-    stripe_secret = models.CharField(max_length=150, null=True)
-    stripe_publishable_api_key = models.CharField(max_length=100, null=True)
+    stripe_api_key = models.CharField(max_length=300, null=True)
+    stripe_secret = models.CharField(max_length=300, null=True)
+    stripe_publishable_api_key = models.CharField(max_length=300, null=True)
     # List of currencies supported for Stripe payments.
     stripe_currencies = models.ManyToManyField(
         'service_stripe.Currency', related_name="+"
