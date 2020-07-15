@@ -36,12 +36,10 @@ class AdminAuthentication(HeaderAuthentication):
 
     def authenticate(self, request):
         token = self.get_auth_header(request)
-        #token = "" #Overide token for testing
-
         rehive = Rehive(token)
 
         try:
-            user = rehive.auth.tokens.verify(token)
+            user = rehive.auth.get()
             groups = [g['name'] for g in user['groups']]
             if len(set(["admin", "service"]).intersection(groups)) <= 0:
                 raise exceptions.AuthenticationFailed(_('Invalid admin user'))
@@ -78,12 +76,10 @@ class UserAuthentication(HeaderAuthentication):
 
     def authenticate(self, request):
         token = self.get_auth_header(request)
-        #token = "" #Overide token for testing
-
         rehive = Rehive(token)
 
         try:
-            user = rehive.auth.tokens.verify(token)
+            user = rehive.auth.get()
         except APIException as exc:
             if (hasattr(exc, 'data')):
                 message = exc.data['message']
