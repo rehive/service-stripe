@@ -13,3 +13,4 @@ psycopg2==2.7.5
 rehive==1.2.5
 sentry-sdk==0.6.9
 stripe==2.41.0
+vine==1.3
