@@ -17,6 +17,8 @@ services:
     image: postgres:9.6
     ports:
       - '${POSTGRES_PORT}:5432'
+    environment:
+      - POSTGRES_PASSWORD=postgres
     restart: always
     volumes:
       - pgdata:/var/lib/postgresql/data

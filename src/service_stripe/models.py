@@ -135,7 +135,7 @@ class Currency(DateModel):
 
 
 class Session(DateModel):
-    identifier = models.CharField(max_length=64, unique=True, db_index=True)
+    identifier = models.CharField(max_length=255, unique=True, db_index=True)
     user = models.ForeignKey('service_stripe.User', on_delete=models.CASCADE)
     mode = EnumField(SessionMode, max_length=20, db_index=True)
     success_url = models.URLField(max_length=250)
@@ -150,7 +150,7 @@ class Session(DateModel):
 
 
 class Payment(DateModel):
-    identifier = models.CharField(max_length=64, unique=True, db_index=True)
+    identifier = models.CharField(max_length=255, unique=True, db_index=True)
     user = models.ForeignKey('service_stripe.User', on_delete=models.CASCADE)
     currency = models.ForeignKey(
         'service_stripe.Currency', on_delete=models.CASCADE
