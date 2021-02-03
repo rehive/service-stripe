@@ -47,6 +47,8 @@ service:
     periodSeconds: 10
     timeoutSeconds: 2
   type: NodePort
+imagePullSecrets:
+  name: acr-secret
 management:
   enabled: false
 rabbitmq:
