@@ -2,7 +2,7 @@ version: '2'
 configs:
   staging:
     project_name: service-stripe
-    docker_image: rehiveservices.azurecr.io/service-stripe
+    docker_image: gcr.io/rehive-services/service-stripe
     cloud_provider:
       name: azure
       subscription_id: 57800aa9-e115-4ede-9b70-0e1ce97294f6
@@ -16,6 +16,7 @@ configs:
     helm_version: 3.1.1
     use_system_helm: false
     helm_chart_version: 0.2.3
+    container_registry_provider: google
   production:
     project_name: service-stripe
     docker_image: gcr.io/rehive-services/service-stripe

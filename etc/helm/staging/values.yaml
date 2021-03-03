@@ -1,18 +1,18 @@
 deployment:
-  command: ['gunicorn', 'config.wsgi:application', '--config', 'file:config/gunicorn.py']
-  args: null
+  command: [gunicorn, config.wsgi:application, --config, file:config/gunicorn.py]
+  args:
   replicaCount: 1
   resources:
     requests:
     limits:
 image:
   pullPolicy: IfNotPresent
-  repository: rehiveservices.azurecr.io/service-stripe
+  repository: gcr.io/rehive-services/service-stripe
   tag: latest
 ingress:
   annotations:
     kubernetes.io/ingress.class: nginx
-    kubernetes.io/tls-acme: "true"
+    kubernetes.io/tls-acme: 'true'
   enabled: true
   hosts:
   - stripe.s.services.rehive.io
@@ -23,7 +23,7 @@ ingress:
 postgres:
   enabled: true
   host: patroni-service-stripe-patroni.service-stripe-staging.svc.cluster.local
-  port: "5432"
+  port: '5432'
   secret:
     key: password-admin
     name: patroni-service-stripe-patroni
@@ -48,7 +48,7 @@ service:
     timeoutSeconds: 2
   type: NodePort
 imagePullSecrets:
-  name: acr-secret
+  name: gcr-json-key
 management:
   enabled: false
 rabbitmq:
