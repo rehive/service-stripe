@@ -15,7 +15,7 @@ configs:
     helm_chart: rehive/rehive-service
     helm_version: 3.1.1
     use_system_helm: false
-    helm_chart_version: 0.2.3
+    helm_chart_version: 0.2.5
     container_registry_provider: google
   production:
     project_name: service-stripe
@@ -28,6 +28,6 @@ configs:
     namespace: service-stripe
     helm_values_path: ./etc/helm/production/values.yaml
     helm_chart: rehive/rehive-service
-    helm_chart_version: 0.2.2
+    helm_chart_version: 0.2.5
     use_system_helm: false
     helm_version: 2.14.3
