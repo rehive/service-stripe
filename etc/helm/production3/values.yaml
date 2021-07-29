@@ -4,7 +4,7 @@ deployment:
     - config.wsgi:application
   args:
     config: file:config/gunicorn.py
-  replicaCount: 1
+  replicaCount: 3
   resources:
     requests:
       cpu: 5m
@@ -29,9 +29,9 @@ ingress:
       secretName: service-stripe-tls
 postgres:
   enabled: true
-  host: 172.30.224.3
+  host: 172.26.144.2
   port: 5432
-  db: service_notification
+  db: service_stripe
   secret:
     key: postgres-password
     name: postgres

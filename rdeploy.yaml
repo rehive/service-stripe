@@ -44,5 +44,5 @@ configs:
       helm_values_path: ./etc/helm/production3/values.yaml
       helm_chart: rehive/rehive-service
       helm_chart_version: 1.0.0
-      helm_version: 3.1.1
+      helm_version: 3.6.3
       use_system_helm: false
