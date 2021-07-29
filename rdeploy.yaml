@@ -39,7 +39,7 @@ configs:
         name: gcp
         project: rehive-services
         kube_cluster: staging
-        zone: europe-west1-c
+        region: europe-west4
       namespace: service-notification-staging
       helm_values_path: ./etc/helm/staging2/values.yaml
       helm_chart: rehive/rehive-service
