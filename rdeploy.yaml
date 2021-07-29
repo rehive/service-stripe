@@ -32,16 +32,16 @@ configs:
     use_system_helm: false
     helm_version: 2.14.3
   production3:
-      project_name: service-notification
-      docker_image: gcr.io/rehive-services/service-notification
+      project_name: service-stripe
+      docker_image: gcr.io/rehive-services/service-stripe
       kube_context: gke_rehive-services_europe-west4_production3
       cloud_provider:
         name: gcp
         project: rehive-services
-        kube_cluster: staging
+        kube_cluster: production3
         region: europe-west4
-      namespace: service-notification-staging
-      helm_values_path: ./etc/helm/staging2/values.yaml
+      namespace: service-stripe
+      helm_values_path: ./etc/helm/production3/values.yaml
       helm_chart: rehive/rehive-service
       helm_chart_version: 1.0.0
       helm_version: 3.1.1
