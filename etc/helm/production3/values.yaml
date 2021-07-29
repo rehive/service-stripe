@@ -1,0 +1,63 @@
+deployment:
+  command:
+    - gunicorn
+    - config.wsgi:application
+  args:
+    config: file:config/gunicorn.py
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 5m
+      memory: 350Mi
+    limits:
+      cpu: 25m
+      memory: 1750Mi
+image:
+  pullPolicy: IfNotPresent
+  repository: gcr.io/rehive-services/service-stripe
+  tag: latest
+ingress:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+  enabled: true
+  hosts:
+    - stripe2.services.rehive.io
+  tls:
+    - hosts:
+        - stripe2.services.rehive.io
+      secretName: service-stripe-tls
+postgres:
+  enabled: true
+  host: 172.30.224.3
+  port: 5432
+  db: service_notification
+  secret:
+    key: postgres-password
+    name: postgres
+  user: service-stripe
+service:
+  externalPort: 80
+  internalPort: 8000
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+  name: nginx
+  readinessProbe:
+    httpGet:
+      path: /readiness
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+  type: NodePort
+rabbitmq:
+  enabled: false
+redis:
+  enabled: false
+workers:
+  enabled: false

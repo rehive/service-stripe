@@ -1,4 +1,4 @@
-version: '2'
+version: '3'
 configs:
   staging:
     project_name: service-stripe
@@ -31,3 +31,18 @@ configs:
     helm_chart_version: 0.2.5
     use_system_helm: false
     helm_version: 2.14.3
+  production3:
+      project_name: service-notification
+      docker_image: gcr.io/rehive-services/service-notification
+      kube_context: gke_rehive-services_europe-west4_production3
+      cloud_provider:
+        name: gcp
+        project: rehive-services
+        kube_cluster: staging
+        zone: europe-west1-c
+      namespace: service-notification-staging
+      helm_values_path: ./etc/helm/staging2/values.yaml
+      helm_chart: rehive/rehive-service
+      helm_chart_version: 1.0.0
+      helm_version: 3.1.1
+      use_system_helm: false
