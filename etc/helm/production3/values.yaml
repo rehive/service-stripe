@@ -7,7 +7,7 @@ deployment:
       cpu: 50m
       memory: 350Mi
     limits:
-      cpu: 500m
+      cpu: 350m
       memory: 1750Mi
 image:
   pullPolicy: IfNotPresent
