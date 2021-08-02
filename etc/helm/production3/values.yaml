@@ -1,16 +1,13 @@
 deployment:
-  command:
-    - gunicorn
-    - config.wsgi:application
+  command: [gunicorn, config.wsgi:application, --config, file:config/gunicorn.py]
   args:
-    config: file:config/gunicorn.py
   replicaCount: 3
   resources:
     requests:
-      cpu: 5m
+      cpu: 50m
       memory: 350Mi
     limits:
-      cpu: 25m
+      cpu: 500m
       memory: 1750Mi
 image:
   pullPolicy: IfNotPresent
@@ -35,7 +32,7 @@ postgres:
   secret:
     key: postgres-password
     name: postgres
-  user: service-stripe
+  user: service_stripe
 service:
   externalPort: 80
   internalPort: 8000
