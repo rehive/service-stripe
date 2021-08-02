@@ -7,7 +7,7 @@ deployment:
       cpu: 50m
       memory: 350Mi
     limits:
-      cpu: 350m
+      cpu: 500m
       memory: 1750Mi
 image:
   pullPolicy: IfNotPresent
@@ -19,10 +19,10 @@ ingress:
     kubernetes.io/tls-acme: "true"
   enabled: true
   hosts:
-    - stripe2.services.rehive.io
+    - stripe.services.rehive.io
   tls:
     - hosts:
-        - stripe2.services.rehive.io
+        - stripe.services.rehive.io
       secretName: service-stripe-tls
 postgres:
   enabled: true
