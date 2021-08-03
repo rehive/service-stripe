@@ -1,38 +1,42 @@
 deployment:
-  command: [gunicorn, config.wsgi:application, --config, file:config/gunicorn.py]
+  command:
+    - gunicorn
+    - "config.wsgi:application"
   args:
-  replicaCount: 3
+    config: "file:config/gunicorn.py"
+  replicaCount: 1
   resources:
     requests:
-      cpu: 50m
-      memory: 350Mi
+      memory: 400M
+      cpu: 100m
     limits:
+      memory: 512Mi
       cpu: 500m
-      memory: 1750Mi
 image:
   pullPolicy: IfNotPresent
   repository: gcr.io/rehive-services/service-stripe
-  tag: latest
+  tag: 0.0.0-rc.1
 ingress:
   annotations:
     kubernetes.io/ingress.class: nginx
     kubernetes.io/tls-acme: "true"
   enabled: true
   hosts:
-    - stripe.services.rehive.io
+  - stripe.services.rehive.io
   tls:
-    - hosts:
-        - stripe.services.rehive.io
-      secretName: service-stripe-tls
+  - hosts:
+    - stripe.services.rehive.io
+    secretName: service-stripe-tls
+management:
+  enabled: false
 postgres:
   enabled: true
-  host: 172.26.144.2
-  port: 5432
-  db: service_stripe
+  host: patroni-service-stripe-patroni.service-stripe.svc.cluster.local
+  port: "5432"
   secret:
-    key: postgres-password
-    name: postgres
-  user: service_stripe
+    key: password-admin
+    name: patroni-service-stripe-patroni
+  user: webapp
 service:
   externalPort: 80
   internalPort: 8000
