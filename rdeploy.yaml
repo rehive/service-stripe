@@ -1,4 +1,4 @@
-version: '2'
+version: '3'
 configs:
   staging:
     project_name: service-stripe
@@ -17,7 +17,7 @@ configs:
     use_system_helm: false
     helm_chart_version: 0.2.5
     container_registry_provider: google
-  production:
+  production-old:
     project_name: service-stripe
     docker_image: gcr.io/rehive-services/service-stripe
     cloud_provider:
@@ -26,8 +26,23 @@ configs:
       kube_cluster: production
       zone: europe-west1-c
     namespace: service-stripe
-    helm_values_path: ./etc/helm/production/values.yaml
+    helm_values_path: ./etc/helm/production-old/values.yaml
     helm_chart: rehive/rehive-service
     helm_chart_version: 0.2.5
     use_system_helm: false
     helm_version: 2.14.3
+  production:
+      project_name: service-stripe
+      docker_image: gcr.io/rehive-services/service-stripe
+      kube_context: gke_rehive-services_europe-west4_production3
+      cloud_provider:
+        name: gcp
+        project: rehive-services
+        kube_cluster: production3
+        region: europe-west4
+      namespace: service-stripe
+      helm_values_path: ./etc/helm/production/values.yaml
+      helm_chart: rehive/rehive-service
+      helm_chart_version: 1.0.0
+      helm_version: 3.6.3
+      use_system_helm: false
