@@ -4,8 +4,6 @@
   <p align="center">A Rehive service to handle stripe payment processing.</p>
 </p>
 
-## Requirements
-
 Requires the following permissions in Rehive:
 
 permissions |
