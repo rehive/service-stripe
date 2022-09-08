@@ -1,6 +1,10 @@
-# Stripe Service
+<p align="center">
+  <img width="64" src="https://avatars2.githubusercontent.com/u/22204821?s=200&v=4" alt="Rehive Logo">
+  <h1 align="center">Service Stripe</h1>
+  <p align="center">A Rehive service to handle stripe payment processing.</p>
+</p>
 
-A service to handle stripe payment processing.
+## Requirements
 
 Requires the following permissions in Rehive:
 
