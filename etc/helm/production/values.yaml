@@ -1,7 +1,7 @@
 deployment:
   command: [gunicorn, config.wsgi:application, --config, file:config/gunicorn.py]
   args:
-  replicaCount: 3
+  replicaCount: 0
   resources:
     requests:
       cpu: 50m
